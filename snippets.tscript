@@ -1,0 +1,8 @@
+# CHARACTERS OF A STRING
+# Iterate through characters of a string without converting them to an integer
+# Explanation: String.split("") splits each character of the string, resulting
+#              in an array, where each element is a string with only one
+#              character.
+# following example prints each character of "Hello World!" in a single line
+for var c in "Hello World!".split("") do
+	print(c)

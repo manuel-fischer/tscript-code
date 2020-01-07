@@ -1,0 +1,146 @@
+# implementation of some utility functions
+# imitation of C++'s <algorithm> functions
+# does not work on iterators or ranges, it always creates a copy with the
+# transformed elements
+
+namespace algo
+{
+	function zip(a, b)
+	{
+		if a.size() != b.size() then error("zip: arrays have different sizes");
+		var ret = Array(a.size());
+		for var i in 0:a.size() do ret[i] = [a[i], b[i]];
+		return ret;
+	}
+
+
+	function transform(a, func)
+	{
+		var ret = Array(a.size());
+		for var i in 0:a.size() do ret[i] = func(a[i]);
+		return ret;
+	}
+
+	function items(a)
+	{
+		return transform(a.keys(), function[a](k){ return [k, a[k]]; });	
+	}
+
+	function enumerate(a)
+	{
+		return zip(0:a.size(), a);	
+	}
+	
+	function reverse(a)
+	{
+		var ret = Array(a.size());
+		for var i in 0:a.size() do ret[i] = a[a.size()-i-1];
+		return ret;
+	}
+	
+	function remove_if(a, func)
+	{
+		var ret = [];
+		for	var e in a do if func(e) then ret.push(e);
+		return ret;
+	}
+	
+	function find_if(a, func)
+	{
+		for var i in 0:a.size() do if func(a[i]) then return i;	
+		return null;
+	}
+	
+	function find(a, elem)
+	{
+		for var i in 0:a.size() do if a[i] == elem then return i;
+		return null;
+	}
+	
+	function count_if(a, func)
+	{
+		var c = 0;
+		for var e in a do if func(e) then c+=1;
+		return c;
+	}
+	
+	function count(a, elem)
+	{
+		var c = 0;
+		for var e in a do if e == elem then c+=1;
+		return c;
+	}
+	
+	function replace_if(a, func, new_elem)
+	{
+		var ret = Array(a);
+		for var i in 0:a.size() do if func(ret[i]) then ret[i] = new_elem;
+		return ret;
+	}
+	
+	function replace(a, old_elem, new_elem)
+	{
+		var ret = Array(a);
+		for var i in 0:a.size() do if ret[i] == old_elem then ret[i] = new_elem;
+		return ret;
+	}
+	
+	# Searches for the first occurrence from start of the sequence of elements of b in a
+	function search(a, b, start=0)
+	{
+		for var i in start:a.size()-b.size()+1 do
+		{
+			var equal = true;
+			for var j in 0:b.size() do
+				if a[i+j] != b[j] then
+				{
+					equal = false;
+					break; # breaks inner loop
+				}
+				
+			if equal then return i;
+		}
+		return null;
+			
+		## alternative C++ style implementation
+		# var first = start, last = a.size();
+		# var s_first = 0, s_last = b.size();
+		# while true do
+		# {
+		# 	var it = first;
+		# 	var s_it = s_first;
+		# 	while true do
+		# 	{
+		# 		if s_it == s_last then
+		# 			return first;
+		# 			
+		# 		if it == last then
+		# 			return null;
+		# 			
+		# 		if a[it] != b[s_it] then
+		# 			break;
+		# 			
+		# 		it += 1; s_it += 1;
+		# 	}
+		# 	first += 1;
+		# }
+	}
+}
+
+## EXTENSION CODE
+#{
+#	var steve = { name: "Steve", age: 10, hobbies: "building", favcolor: "blue" };
+#	for var[k, v] in algo.items(steve) do print(k + ": " + v);
+#}
+#print("");
+{
+	var numbers = [1, 1, 2, 3, 5, 8, 13, 21];
+	print("numbers: " + numbers);
+	print("squared: " + algo.transform(numbers, function(x) { return x ^ 2; }));
+	print("enumerated: " + algo.enumerate(numbers));
+	print("reversed: " + algo.reverse(numbers));
+	print("even: " + algo.remove_if(numbers, function(x) { return x % 2 == 0; }));
+	print("odd count: " + algo.count(numbers, function(x) { return x % 2 == 1; }));
+	print("index 5: " + algo.find(numbers, 5));
+	print("index 123: " + algo.search(numbers, [1, 2, 3]));
+}
