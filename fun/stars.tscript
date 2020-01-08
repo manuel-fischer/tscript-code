@@ -2,6 +2,10 @@
 ##
 ##  stars.tscript, geschrieben von Manuel Fischer
 ##
+##  a simple starfield screensaver
+##  it drives through a cyclic world of stars in a cube
+##  for variation there are some turbolences.
+##
  ###
  
 # constant
@@ -9,8 +13,11 @@ namespace settings
 {
 	var starCount = 100;
 	var speed = 0.01;
-	var renderDistance = 0.5;
+	# var renderDistance = 0.5;
 	var starSize = 10;
+	var turbulences = true;
+
+	var debugFPS = false;
 }
 
 namespace state
@@ -25,7 +32,6 @@ namespace state
 
 namespace debug
 {
-	var showDrawTime = true;
 	var frames = 0;
 	var timeSum = 0;
 }
@@ -47,15 +53,16 @@ function tick()
 {
 	use namespace state;
 	
-	# movement
+	if settings.turbulences then
+	{
+		var t = time();
+		var m = math.sin(t * 0.0001) ^ 5;
+		vx = math.sin(t * 0.001) * 0.01; vy = math.cos(t * 0.003) * 0.01;
+		vx *= m; vy *= m;
+	}
+		
 	px = x; py = y; pz = z;
 	x += vx; y += vy; z += vz;
-}
-
-# star position, camera position
-function calcDispPos(sx, sy, sz, cx, cy, cz)
-{
-	return [(sx - cx) % 1 - 0.5, (sy - cy) % 1 - 0.5, (sz - cz) % 1 - 0.5];
 }
 
 function draw()
@@ -65,31 +72,38 @@ function draw()
 	for var star in stars do
 	{
 		var sx = star[0], sy = star[1], sz = star[2];
-		
-		var old = calcDispPos(sx, sy, sz, px, py, pz);
-		var ox = old[0], oy = old[1], oz = old[2];
-		if oz > 0 and math.abs(ox) < oz and math.abs(oy) < oz then
+
+		var oz = (sz - pz) % 1 - 0.5;
+		if oz > 0 then
 		{
-			# clear old star in black
-			# don't care about other already drawn stars to be redrawn
-			var dX = (ox/oz+1)*mulX, dY = (oy/oz+1)*mulY;
-			var dR = settings.starSize * (0.5-oz) + 2;
-			
-			canvas.setFillColor(0, 0, 0);
-			canvas.fillRect(dX - dR, dY - dR, 2*dR, 2*dR);
+			var ox = (sx - px) % 1 - 0.5, oy = (sy - py) % 1 - 0.5;
+			if math.abs(ox) < oz then if math.abs(oy) < oz then
+			{
+				# clear old star in black
+				# don't care about other already drawn stars to be redrawn
+				# old windows screensaver does this trick to reduce flickering
+				var dX = (ox/oz+1)*mulX, dY = (oy/oz+1)*mulY;
+				var dR = settings.starSize * (0.5-oz) + 2;
+
+				canvas.setFillColor(0, 0, 0);
+				canvas.fillRect(dX - dR, dY - dR, 2*dR, 2*dR);
+			}
 		}
 		
 		# draw new star (line color)
-		var new = calcDispPos(sx, sy, sz, x, y, z);
-		var nx = new[0], ny = new[1], nz = new[2];
-		if nz > 0 and math.abs(nx) < nz and math.abs(ny) < nz then
+		var nz = (sz - z) % 1 - 0.5;
+		if nz > 0 then
 		{
-			# draw new star in white
-			var dX = (nx/nz+1)*mulX, dY = (ny/nz+1)*mulY;
-			var dR = settings.starSize * (0.5-nz);
-			
-			canvas.setFillColor(1, 1, 1);
-			canvas.fillCircle(dX, dY, dR);
+			var nx = (sx - x) % 1 - 0.5, ny = (sy - y) % 1 - 0.5;
+			if math.abs(nx) < nz then if math.abs(ny) < nz then
+			{
+				# draw new star in white
+				var dX = (nx/nz+1)*mulX, dY = (ny/nz+1)*mulY;
+				var dR = settings.starSize * (0.5-nz);
+
+				canvas.setFillColor(1, 1, 1);
+				canvas.fillCircle(dX, dY, dR);
+			}
 		}
 	}
 }
@@ -99,7 +113,7 @@ function timer(event)
 	tick();
 	var t0 = time();
 	draw();
-	if debug.showDrawTime then
+	if settings.debugFPS then
 	{
 		canvas.setFillColor(0, 0, 0.1);
 		canvas.fillRect(0, 0, 70, 30);
