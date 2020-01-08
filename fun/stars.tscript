@@ -1,0 +1,131 @@
+ ###
+##
+##  stars.tscript, geschrieben von Manuel Fischer
+##
+ ###
+ 
+# constant
+namespace settings
+{
+	var starCount = 100;
+	var speed = 0.01;
+	var renderDistance = 0.5;
+	var starSize = 10;
+}
+
+namespace state
+{
+	# every component of the coordinates is in the range [0, 1)
+	var px, py, pz; # previous position
+	var x,  y,  z;  # position
+	var vx, vy, vz; # velocity
+	
+	var stars;      # array: [[x, y, z]...]
+}
+
+namespace debug
+{
+	var showDrawTime = true;
+	var frames = 0;
+	var timeSum = 0;
+}
+
+function init()
+{
+	use namespace state;
+	px = 0; py = 0; pz = 0;
+	x  = 0; y  = 0; z  = 0;
+	vx = 0; vy = 0; vz = settings.speed;
+	
+	stars = Array(settings.starCount);
+	
+	for var i in stars.keys() do
+		stars[i] = [math.random(), math.random(), math.random()];
+}
+
+function tick()
+{
+	use namespace state;
+	
+	# movement
+	px = x; py = y; pz = z;
+	x += vx; y += vy; z += vz;
+}
+
+# star position, camera position
+function calcDispPos(sx, sy, sz, cx, cy, cz)
+{
+	return [(sx - cx) % 1 - 0.5, (sy - cy) % 1 - 0.5, (sz - cz) % 1 - 0.5];
+}
+
+function draw()
+{
+	use namespace state;
+	var mulX = canvas.width()*0.5, mulY = canvas.height()*0.5;
+	for var star in stars do
+	{
+		var sx = star[0], sy = star[1], sz = star[2];
+		
+		var old = calcDispPos(sx, sy, sz, px, py, pz);
+		var ox = old[0], oy = old[1], oz = old[2];
+		if oz > 0 and math.abs(ox) < oz and math.abs(oy) < oz then
+		{
+			# clear old star in black
+			# don't care about other already drawn stars to be redrawn
+			var dX = (ox/oz+1)*mulX, dY = (oy/oz+1)*mulY;
+			var dR = settings.starSize * (0.5-oz) + 2;
+			
+			canvas.setFillColor(0, 0, 0);
+			canvas.fillRect(dX - dR, dY - dR, 2*dR, 2*dR);
+		}
+		
+		# draw new star (line color)
+		var new = calcDispPos(sx, sy, sz, x, y, z);
+		var nx = new[0], ny = new[1], nz = new[2];
+		if nz > 0 and math.abs(nx) < nz and math.abs(ny) < nz then
+		{
+			# draw new star in white
+			var dX = (nx/nz+1)*mulX, dY = (ny/nz+1)*mulY;
+			var dR = settings.starSize * (0.5-nz);
+			
+			canvas.setFillColor(1, 1, 1);
+			canvas.fillCircle(dX, dY, dR);
+		}
+	}
+}
+
+function timer(event)
+{
+	tick();
+	var t0 = time();
+	draw();
+	if debug.showDrawTime then
+	{
+		canvas.setFillColor(0, 0, 0.1);
+		canvas.fillRect(0, 0, 70, 30);
+		canvas.setFillColor(1, 1, 1);
+		canvas.setFont("helvetica", 18);
+		debug.timeSum += time() - t0;
+		debug.frames += 1;
+		canvas.setTextAlign("left");
+		canvas.text( 6, 6, "fps");
+		canvas.setTextAlign("right");
+		canvas.text(64, 6, 1000//(debug.timeSum / debug.frames));
+	}
+}
+
+init();
+
+function initDraw()
+{
+	canvas.setFillColor(0, 0, 0);
+	canvas.setLineColor(1, 1, 1);
+	canvas.clear();
+}
+
+initDraw();
+setEventHandler("canvas.resize", function(event) { initDraw(); });
+
+setEventHandler("timer", timer);
+
+enterEventMode();
