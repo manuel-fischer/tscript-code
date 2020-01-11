@@ -1,8 +1,146 @@
-# CHARACTERS OF A STRING
-# Iterate through characters of a string without converting them to an integer
-# Explanation: String.split("") splits each character of the string, resulting
-#              in an array, where each element is a string with only one
-#              character.
-# following example prints each character of "Hello World!" in a single line
-for var c in "Hello World!".split("") do
-	print(c)
+print("<CHARACTERS OF A STRING>");
+namespace charactersOfAString
+{
+	# Iterate through characters of a string  without converting them into an
+	# integer.
+	# Explanation: String.split("")  splits  each  character  of  the string,
+	#              resulting  in  an  array,  where each element  is a string
+	#              with only one character.
+	# The following example  prints  each  character of  "Hello World!"  in a
+	# single line
+	
+	for var c in "Hello World!".split("") do
+		print(c);
+}
+print("</CHARACTERS OF A STRING>\n");
+
+print("<FUNCTION OBJECTS/FUNCTORS>");
+namespace functionObjects 
+{
+	# Allow an object to have members and to be a function at the same time
+	# Explanation: Builtin types  can be inherited from,  the  Function-class
+	#              accepts a function as  the parameter  to  the constructor.
+	#              The base class Functor  inherits from Function.  It passes
+	#              the member this.call  to the constructor, which later gets
+	#              called, when the object is used as a function. This allows
+	#              the function  to be  implemented  in the  class body  as a
+	#              member function.  (Note that `this.call` does late binding
+	#              (name lookup at runtime) compared to simply `call`,  which
+	#              would refer  to an entity,  that must have been previously
+	#              defined)
+	
+	class Functor : Function
+	{
+	public:
+		constructor() : super(this.call) {} # late binding of call
+	}
+	
+	# The following example  uses the class  Functor  to implement a Counter-
+	# class, which can be called as a function and which returns the sequence
+	# 1, 2, 3, ... when called repetitively. The public member `i` represents
+	# the counter value, it is initialized to 0. The call-function increments
+	# `i`  and returns the new value.  The member `i`  effectively stores the
+	# number of calls, when not changed from the outside.
+
+	class Counter : Functor
+	{
+	public:
+		var i = 0;
+		
+		function call()
+		{
+			i += 1;
+			return i;
+		}
+	}
+
+	# This part of the code  constructs  and  repetitively calls  the counter
+	# function object.  It prints  which  value  the  member  `i`  had before 
+	# calling the functor,  the value which was returned by  the functor  and
+	# the value of `i` after the call.  Note that here the subexpressions are
+	# evaluated from left to right resulting in this behavior.
+	
+	var myCounter = Counter();
+	for 0:100 do print(myCounter.i +", "+ myCounter() +", "+ myCounter.i);
+	
+	# Functors  can be used  for various things,  where  lambda functions are
+	# usually used.
+	namespace old
+	{
+		# This example is given in the lecture about anonymous functions:
+		# "Informatik 1 - Einheit 9 - Anonyme Funktionen" at slide 15,
+		# by Prof. Dr. Tobias Glasmachers
+		function constructQuadraticFunction(p, q)
+		{
+			return function[p, q](x)
+					{ return x^2 + p*x + q; }; 
+		}
+		# ...
+	}
+	
+	# The code can be rewritten as follows; this time, the base Functor class
+	# and the class implementing the call function are merged to one class.
+	namespace new
+	{
+		class QuadraticFunction : Function
+		{
+		public:
+			var p, q;
+			
+			constructor(p, q): super(this.call)
+			{
+				this.p = p; this.q = q;
+			}
+		
+			function call(x)
+			{ return x^2 + p*x + q; }
+		}
+			
+		# as a hack, any Type can be used like a function [1]:
+		var constructQuadraticFunction = QuadraticFunction;
+		# so we pretend nothing has changed ...
+		# ...
+	}
+	
+	# [1] Thought Experiment:
+	#     Types/Classes behave like functions,  but Types cannot be passed to
+	#     the constructor  of  Function,  because  they  are  not  functions.
+	#     When this would have been true,  the class Type  must be a subclass
+	#     of Function,  and  Function(type)  would  be  able  to  copy  types
+	#     (resulting in multiple distinct types with the same behavior)
+	#     There could be the special member `MyClass.constructor`,  resulting
+	#     in a Function.  But when this would be passed to Function, just the
+	#     constructor function  itself  would be copied,  objects  created by
+	#     that function  would have  the same type as objects  created by the
+	#     original constructor.
+}
+print("</FUNCTION OBJECTS/FUNCTORS>\n");
+
+print("<CHANGING FUNCTION CLOSURE STATE>");
+namespace changingFunctionClosureState
+{
+	# TScripts anonymous functions are definitely influenced by C++'s  lambda
+	# functions.  They both have a capture/closure list, which allows to copy
+	# variables  from the enclosing scope  or  define new variables stored in
+	# the function object itself.  But different to C++, the direct values of
+	# the captured variables are not changeable, the values are copied to the
+	# local frame  of the function,  so  changes of these  do not  affect the
+	# capture. I am not sure if this is a bug or not. [2]
+	
+	var f = function[x=0]() {
+		print(x);
+		x += 1;
+	};
+
+	var g = Function(f);
+	f();
+	f();
+	g();
+
+	# [2] I tried to make an anonymous function, which changes state.
+	#     I wanted to know what happens when the function would have been
+	#     copied by the constructor of Function itself. But in the end whilst
+	#     the state of the captured variables cannot be changed, this does
+	#     not matter.
+}
+print("</CHANGING FUNCTION CLOSURE STATE>\n");
