@@ -125,7 +125,7 @@ namespace changingFunctionClosureState
 	# the function object itself.  But different to C++, the direct values of
 	# the captured variables are not changeable, the values are copied to the
 	# local frame  of the function,  so  changes of these  do not  affect the
-	# capture. I am not sure if this is a bug or not. [2]
+	# capture. This is not a bug. [2]
 	
 	var f = function[x=0]() {
 		print(x);

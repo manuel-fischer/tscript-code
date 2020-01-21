@@ -1,0 +1,497 @@
+#[file] calendar_draw.tscript#decl
+namespace draw
+{
+	var dirtyRefresh = {};
+}
+
+#[file] calendar_defs.tscript
+var today, current, hovered; # today's date, selected date, hovered date
+
+var weekdayabbrv = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+var monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni",
+                  "Juli", "August", "September", "Oktober", "November", "Dezember"];
+				  
+namespace colors
+{
+	var theme = "normal"; # normal, dark
+	
+	var d, wd, my, t; # days, weekdays, month/year, today
+	var bg, mybg, tbg;  # background, month/year background, today background
+	
+	var hoveredColor; # RGBA
+	#var hoveredSelectedColor;
+	
+	function initTheme()
+	{
+		if theme == "normal" then
+		{
+			d  = [0.2, 0.2, 0.2];
+			wd = [0.4, 0.4, 0.4];
+			my = [0.3, 0.3, 0.3];
+			t  = [1.0, 1.0, 1.0];
+
+			bg   = [1.0, 1.0, 1.0];
+			mybg = [0.95,0.95,0.95];
+			tbg  = [0.1, 0.7, 0.3];
+			
+			hoveredColor = [0.0, 0.0, 0.0, 0.2];
+			#hoveredSelectedColor = [0.15, 0.45, 0.25];
+		}
+		else if theme == "dark" then
+		{
+			d  = [1.0, 1.0, 1.0];
+			wd = [0.8, 0.8, 0.8];
+			my = [1.0, 1.0, 1.0];
+			t  = [1.0, 1.0, 1.0];
+
+			bg   = [0.2, 0.2, 0.2];
+			mybg = [0.3, 0.3, 0.3];
+			tbg  = [0.1, 0.7, 0.3];
+			
+			#hoveredColor = [0.1, 0.7, 0.3];
+			hoveredColor = [1, 1, 1, 0.2];
+			#hoveredSelectedColor = [0.55, 0.85, 0.65];
+		}
+	}
+	initTheme();
+}
+
+#[file] date.tscript
+# The Date class represents a date as the number of days since
+# 01.01.1970. The range is limited to years 1970 to 2099, for
+# ease of leap year handling. Objects store this value in an
+# integer, not in a member variable, but by inheriting type
+# Integer. In an object oriented view this means that a Date
+# *is* an integer. This design makes the integer operators
+# for arithmetics and comparison available for dates. The
+# class is based on the Gregorian calendar, and the date
+# format is European: "day.month.year", not "year, month day".
+class Date : Integer
+{
+private:
+    static var month_start = [0, 31, 59, 90, 120, 151,
+            181, 212, 243, 273, 304, 334, 365];
+    static var weekdays = ["Monday", "Tuesday", "Wednesday",
+            "Thursday", "Friday", "Saturday", "Sunday"];
+
+	var m_cachedDay, m_cachedMonth, m_cachedYear;
+
+public:
+    # construct a date from the number of days since 1.1.1970
+    constructor(daysSince1970, cachedDay=null, cachedMonth=null, cachedYear=null)
+		: super(daysSince1970)
+    {
+		assert(daysSince1970 >= 0, "invalid date"); 
+		m_cachedDay = cachedDay;
+		m_cachedMonth = cachedMonth;
+		m_cachedYear = cachedYear;
+	}
+
+    # construct a date from day, month, and year
+    static function fromDMY(day, month, year)
+    {
+        assert(Type(year) == Integer, "invalid date");
+        assert(Type(month) == Integer, "invalid date");
+        assert(Type(day) == Integer, "invalid date");
+        assert(year >= 1970 and year < 2100, "invalid date");
+        assert(month >= 1 and month <= 12, "invalid date");
+        var leapyears = (year - 1968 - 1) // 4;
+        var leapyear = year % 4 == 0;
+        var mlen = month_start[month] - month_start[month - 1];
+        if month == 2 and leapyear then mlen += 1;
+        assert(day >= 1 and day <= mlen, "invalid date");
+
+        var x = 365 * (year - 1970) + leapyears
+                  + month_start[month - 1] + (day - 1);
+        if leapyear and month > 2 then x += 1;
+        return Date(x, day, month, year);
+    }
+
+    # return the date x days later
+    function advance(x)
+    {
+        return Date(this + x);
+    }
+
+    # return the year component of the date
+    function year()
+    {
+		if m_cachedYear == null then
+			m_cachedYear = Integer((this + 0.5) / 365.25) + 1970;
+        return m_cachedYear;
+    }
+
+    # return the month component of the date
+    function month()
+    {
+		if m_cachedMonth == null then
+		{
+			var y = year();
+			var r;
+			if (this < 2*365) then r = (this % 365);
+			else
+			{
+				r = Integer((this - 2*365) % 365.25);
+				if y % 4 == 0 and r >= 31 + 28 then r -= 1;
+			}
+			var m;
+			for var i in 0:12 do
+			{
+				m = 11 - i;
+				if r >= month_start[m] then break;
+			}
+			m_cachedMonth = m + 1;
+		}
+		return m_cachedMonth;
+    }
+
+    # return the day component of the date
+    function day()
+    {
+		if m_cachedDay == null then
+		{
+			var y = year();
+			var r, feb29 = 0;
+			if (this < 2*365) then r = (this % 365);
+			else
+			{
+				r = Integer((this - 2*365) % 365.25);
+				if y % 4 == 0 then
+				{
+					if r == 59 then feb29 = 1;
+					if r >= 59 then r -= 1;
+				}
+			}
+			var m;
+			for var i in 0:12 do
+			{
+				m = 11 - i;
+				if r >= month_start[m] then
+					break;
+			}
+			m_cachedDay = r - month_start[m] + 1 + feb29;
+		}
+		return m_cachedDay;
+    }
+
+
+    # return the day-of-week as a number from 0 to 6
+    function dayOfWeek()
+    {
+        return (this + 3) % 7; # to trivial to be cached
+    }
+
+    # return the day-of-week as a string
+    function dayOfWeekString()
+    {
+        return weekdays[(this + 3) % 7];
+    }
+
+    # return a nice string representation of the date
+    function prettyString()
+    {
+        return dayOfWeekString() + ", " + day()
+                                 + "." + month()
+                                 + "." + year()
+							     #+ " (" + this + ")"
+							     ;
+    }
+}
+
+if false then
+{
+	# construct various dates
+	var daysSince1970 = Integer(time() // 86400000);
+	var today = Date(daysSince1970);
+	var release = Date.fromDMY(version()["day"],
+							   version()["month"],
+							   version()["year"]);
+	var ch = Date.fromDMY(24, 12, 1990);
+	var ny = ch.advance(8);
+
+	# operations on dates
+	print("Days since TScript release: " + (today - release));
+	if release > ny then print("TScript was released after 1990.");
+
+	# date methods
+	print("Christmas day 1990 was " + ch.dayOfWeek() + ", "
+			+ ch.day() + "."
+			+ ch.month() + "."
+			+ ch.year());
+	print("Newyear's day 1991 was " + ny.prettyString());
+
+}
+
+#[file] date_util.tscript
+function getToday()
+{
+	var daysSince1970 = Integer(time() // 86400000);
+	return Date(daysSince1970);
+}
+
+function getMonthDays(month, year)
+{
+	var theFirst     = Date.fromDMY(1, month, year);
+	var theNextFirst = Date.fromDMY(1, (month)%12+1, year+month//12);
+	
+	return theFirst:theNextFirst;
+}
+
+namespace monthVars
+{
+	var w, h;
+	
+	function refresh()
+	{
+		use namespace canvas;
+		w = width() / 7;
+		h = height() / 8;	
+	}
+}
+
+function drawMonthWeekHeader()
+{
+	use namespace monthVars;
+	use namespace canvas;
+	use namespace colors;
+	
+	for var i in 0:7 do
+	{
+		var x = i, y = 0;
+
+		setFillColor(wd[0], wd[1], wd[2]);
+		setTextAlign("center");
+		setFont("helvetica", h*0.3);
+		text((x+0.5)*w, (y + (1+0.4))*h, weekdayabbrv[i]);
+	}
+}
+
+function drawMonthHeader(monthtitle)
+{
+	use namespace monthVars;
+	use namespace canvas;
+	use namespace colors;
+	
+	setFillColor(mybg[0], mybg[1], mybg[2]);
+	fillRect(0, 0, width(), h*1.1);
+	
+	setFillColor(my[0], my[1], my[2]);
+	setTextAlign("center");
+	setFont("helvetica", h*0.5);
+	text(width() / 2, 0.3*h, monthtitle);
+}
+
+function drawMonthDay(date)
+{
+	use namespace monthVars;
+	use namespace canvas;
+	use namespace colors;
+	
+	var day = date.day()-1;
+	var weekday = date.dayOfWeek();
+
+	var x = weekday, y = (day-weekday+7-1) // 7;
+	
+	
+	setFillColor(bg[0], bg[1], bg[2]);
+	fillRect(x*w, (y+2)*h, w, h);
+	var dd = h*0.05;
+		
+	if date == today then
+	{
+		setFillColor(tbg[0], tbg[1], tbg[2]);
+		
+		if date == current then
+			fillRect(x*w+2.5*dd, (y+2)*h+2.5*dd, w-5*dd, h-5*dd);
+		else
+			fillRect(x*w+0.5*dd, (y+2)*h+0.5*dd, w-dd, h-dd);
+	}
+	
+	if date == current then
+	{
+		setLineColor(d[0], d[1], d[2]);
+		setLineWidth(dd);
+		rect(x*w+dd, (y+2)*h+dd, w-2*dd, h-2*dd);
+	}
+	
+	if date == hovered then
+	{
+		setFillColor(hoveredColor[0], hoveredColor[1], hoveredColor[2], hoveredColor[3]);
+		fillRect(x*w+0.5*dd, (y+2)*h+0.5*dd, w-dd, h-dd);
+	}
+	
+	if date == today then
+		setFillColor(t[0], t[1], t[2]);
+	else
+		setFillColor(d[0], d[1], d[2]);
+	setTextAlign("center");
+	setFont("helvetica", h*0.4);
+	text((x+0.5)*w, (y + (2+0.3))*h, day+1);
+	
+	#print(day.day());
+}
+
+namespace draw
+{
+
+	function markDayDirty(day)
+	{
+		if day != null then
+			dirtyRefresh[String(day)] = function[day]() { drawMonthDay(day); };
+	}
+
+}
+
+
+#[file] calendar_draw.tscript#main
+function drawMonth(month, year)
+{
+	use namespace canvas;
+	use namespace colors;
+	
+	monthVars.refresh();
+	
+	setFillColor(bg[0], bg[1], bg[2]);
+	clear();
+
+	drawMonthHeader(monthNames[month-1] + " " + year);
+	drawMonthWeekHeader();
+	for var d in getMonthDays(month, year) do
+		drawMonthDay(Date(d));
+}
+
+today = getToday();
+current = today;
+hovered = null;
+
+# namespace draw {}
+var dirty = true;
+
+function changeCurrent(newdate)
+{
+	if current.month() == newdate.month() then
+	if current.year()  == newdate.year() then
+	{
+		draw.markDayDirty(current);
+		draw.markDayDirty(newdate);
+		
+		current = newdate;
+		
+		return;
+	}
+	
+
+	current = newdate;
+	hovered = null;
+	dirty = true;
+}
+
+
+
+setEventHandler("canvas.resize", function(event)
+{
+	dirty = true;
+});
+
+setEventHandler("timer", function(event)
+{
+	if dirty then
+	{
+		drawMonth(current.month(), current.year());
+		dirty = false;
+	}
+	else for var dd in draw.dirtyRefresh.values() do
+		dd();
+		
+	draw.dirtyRefresh = {};
+});
+
+setEventHandler("canvas.keydown", function(event)
+{
+	var k = event.key;
+	var delta = 0;
+	if k == "ArrowLeft"  then delta = -1;
+	if k == "ArrowRight" then delta = +1;
+	if k == "ArrowUp"    then delta = -7;
+	if k == "ArrowDown"  then delta = +7;
+	
+	if delta != 0 then
+	{
+		changeCurrent(current.advance(delta));
+	}
+	
+	
+	if k == "PageUp" then
+	{
+		var m = current.month(), y = current.year();
+		current = Date.fromDMY(1, (m+10)%12+1, y-(13-m)//12);
+		hovered = null;
+		dirty = true;
+	}
+	if k == "PageDown" then
+	{
+		var m = current.month(), y = current.year();
+		current = Date.fromDMY(1, m%12+1, y+m//12);
+		hovered = null;
+		dirty = true;
+	}
+	if k == "F2" then
+	{
+		if colors.theme == "normal"
+		then colors.theme = "dark";
+		else colors.theme = "normal";
+		colors.initTheme();
+		dirty = true;
+	}
+});
+
+
+setEventHandler("canvas.mousemove", function(event)
+{
+	use namespace monthVars; # -> w, h
+	
+	var newHovered; # implicitly null
+	
+	var my = Integer(event.y // h);
+	if my >= 2 then
+	{
+		var mx = Integer(event.x // w);
+
+		var monthDays = getMonthDays(current.month(), current.year());
+		
+		var id = (my-2)*7 + mx - Date(monthDays.begin()).dayOfWeek();
+
+		if 0 <= id then if id < monthDays.size() then
+			newHovered = Date(monthDays.begin() + id);
+
+	}
+	
+	draw.markDayDirty(hovered);
+	draw.markDayDirty(newHovered);
+
+	hovered = newHovered;
+	
+});
+
+setEventHandler("canvas.mouseout", function(event)
+{
+	draw.markDayDirty(hovered);
+	
+	hovered = null;
+});
+
+
+setEventHandler("canvas.mousedown", function(event)
+{
+	if hovered != null then
+	{
+		draw.markDayDirty(hovered);
+		draw.markDayDirty(current);
+
+		current = hovered;
+	}
+});
+
+print("press [F2] to change theme");
+enterEventMode();
