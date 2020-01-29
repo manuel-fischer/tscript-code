@@ -1,0 +1,211 @@
+ ###
+##
+##  A small slideshow for learning TScript
+##
+##  written by Manuel Fischer
+##
+ ###
+var lang = "de";# "de" or "en"
+
+# fonts
+var font = "helvetica";
+var mono = "monospace";
+
+var canvasX; # utility functions
+
+var currentSlide = 0;
+
+var slides = [
+	
+	# Front Page
+	function()
+	{
+		var cw = canvas.width(), ch = canvas.height();
+		canvas.setFillColor(1, 1, 1);
+		canvas.clear();
+		
+		canvas.setFillColor(0, 0, 0.5);
+		canvas.setTextAlign("center");
+		canvas.setFont(font, 0.07*ch);
+		canvas.text(0.5*cw, 0.3*ch, {en: "TScript",
+		                             de: "TScript"}[lang]);
+									 
+		canvas.setFont(font, 0.1*ch);
+		canvas.text(0.5*cw, 0.4*ch, {en: "Graphics etc.",
+		                             de: "Grafiken etc."}[lang]);
+									 
+		canvas.setFillColor(0, 0, 0);
+		canvas.setFont(font, 0.05*ch);
+		canvas.text(0.5*cw, 0.54*ch, {en: "by Manuel Fischer",
+		                             de: "von Manuel Fischer"}[lang]);
+	},
+	# 
+	function()
+	{
+			
+		var cw = canvas.width(), ch = canvas.height();
+		canvas.setFillColor(1, 1, 1);
+		canvas.clear();
+		
+		canvas.setFillColor(0, 0, 0.5);
+		canvas.setTextAlign("center");
+		canvas.setFont(font, 0.06*ch);
+		canvas.text(0.5*cw, 0.07*ch, {en: "Classes",
+		                              de: "Klassen"}[lang]);
+	
+		canvas.setFillColor(0, 0, 0);
+		canvas.setFont(font, 0.04*ch);
+		canvas.setLineColor(0, 0, 0);
+		canvas.setLineWidth(ch*0.0035);
+		
+		canvas.rect(0.4*cw, 0.45*ch, 0.2*cw, 0.1*ch);
+		canvas.text(0.5*cw, 0.48*ch, {en: "Class",
+		                              de: "Klasse"}[lang]);
+									  
+		canvas.setFont(font, 0.04*ch);
+		canvas.line(0.5*cw, 0.69*ch, 0.5*cw, 0.55*ch);
+		canvas.text(0.5*cw, 0.7*ch, {en: "Member",
+		                             de: "Member"}[lang]);
+						
+		canvas.setFont(font, 0.03*ch);
+		
+		canvas.line(0.3*cw, 0.79*ch, 0.5*cw-0.05*ch, 0.75*ch);
+		canvas.text(0.3*cw, 0.8*ch, {en: "Attributes",
+		                             de: "Attribute"}[lang]);
+		canvas.line(0.7*cw, 0.79*ch, 0.5*cw+0.05*ch, 0.75*ch);
+		canvas.text(0.7*cw, 0.8*ch, {en: "Methods",
+		                             de: "Methoden"}[lang]);
+									  
+									  
+		canvas.setFont(font, 0.04*ch);
+		canvas.line(0.5*cw, 0.35*ch, 0.5*cw, 0.45*ch);
+		canvas.text(0.5*cw, 0.3*ch, {en: "Access",
+		                             de: "Zugriff"}[lang]);
+									 
+		canvas.setFont(mono, 0.03*ch);
+		canvas.line(0.2*cw, 0.24*ch, 0.5*cw-0.07*ch, 0.3*ch);
+		canvas.text(0.2*cw, 0.2*ch, "public");
+		canvas.line(0.5*cw, 0.24*ch, 0.5*cw, 0.3*ch);
+		canvas.text(0.5*cw, 0.2*ch, "protected");
+		canvas.line(0.8*cw, 0.24*ch, 0.5*cw+0.07*ch, 0.3*ch);
+		canvas.text(0.8*cw, 0.2*ch, "private");
+		
+	},
+	# Name Lookup in Classes
+	function()
+	{
+		var cw = canvas.width(), ch = canvas.height();
+		canvas.setFillColor(1, 1, 1);
+		canvas.clear();
+		
+		canvas.setFillColor(0, 0, 0.5);
+		canvas.setTextAlign("center");
+		canvas.setFont(font, 0.06*ch);
+		canvas.text(0.5*cw, 0.07*ch, {en: "Name Lookup in Classes",
+		                              de: "Namenszugriff in Klassen"}[lang]);
+	
+		canvas.setFillColor(0, 0, 0);
+		canvas.setFont(font, 0.04*ch);
+		canvas.setLineColor(0, 0, 0);
+		canvas.setLineWidth(ch*0.0035);
+		
+		canvas.rect(0.1*cw, 0.3*ch, 0.3*cw, 0.1*ch);
+		canvas.text(0.25*cw, 0.33*ch, {en: "Superclasses", de: "Oberklassen"}[lang]);
+		
+		canvas.rect(0.1*cw, 0.5*ch, 0.3*cw, 0.1*ch);
+		canvas.text(0.25*cw, 0.53*ch, {en: "Class", de: "Klasse"}[lang]);
+		
+		canvas.rect(0.1*cw, 0.7*ch, 0.3*cw, 0.1*ch);
+		canvas.text(0.25*cw, 0.73*ch, {en: "Subclasses", de: "Unterklassen"}[lang]);
+		
+		canvasX.arrow(0.25*cw, 0.5*ch, 0.25*cw, 0.4*ch);
+		canvasX.arrow(0.25*cw, 0.7*ch, 0.25*cw, 0.6*ch);
+		
+		canvasX.arrow(0*cw, 0.55*ch, 0.1*cw, 0.55*ch);
+		
+		canvas.setLineColor(0, 0, 0, 0.5);
+		
+		canvas.setFillColor(0.9, 0.6, 0.6);
+		canvas.frameRect(0.45*cw, 0.27*ch, 0.12*cw, 0.16*ch);
+		
+		canvas.setFillColor(0.7, 0.6, 0.8);
+		canvas.frameRect(0.60*cw, 0.27*ch, 0.12*cw, 0.28*ch);
+		
+		canvas.setFillColor(0.7, 0.8, 0.6);
+		canvas.frameRect(0.75*cw, 0.27*ch, 0.12*cw, 0.56*ch);
+		
+		canvas.setFillColor(0, 0, 0);
+		
+		canvas.setFont(font, 0.025*ch);
+		canvas.text(0.585*cw, 0.18*ch, {en: "static lookup", de: "statisch ermittelt"}[lang]);
+		canvas.text(0.81*cw, 0.18*ch, {en: "dynamic", de: "dynamisch"}[lang]);
+		
+		canvas.setFont(mono, 0.025*ch);
+		
+		canvas.text(0.51*cw, 0.23*ch, "super.x");
+		canvas.text(0.66*cw, 0.23*ch, "x");
+		canvas.text(0.81*cw, 0.23*ch, "this.x");
+		
+		canvas.setFont(font, 0.025*ch);
+		canvas.text(0.66*cw, 0.56*ch, {en: "already\ndeclared", de: "vorher\ndeklariert"}[lang]);
+	},
+];
+
+
+class CanvasX
+{
+public:
+	function arrow(x0, y0, x1, y1)
+	{
+		var px = x1*0.77 + x0*0.23, py = y1*0.77 + y0*0.23;
+		var xd = x1-x0, yd = y1-y0;
+		var xp = x1*0.95 + x0*0.05, yp = y1*0.95 + y0*0.05;
+		canvas.line(x0, y0, px, py);
+		canvas.curve([[xp, yp],
+		              [px-yd*0.1, py+xd*0.1],
+		              [px+yd*0.1, py-xd*0.1]],
+					 true);
+	}
+}
+canvasX = CanvasX();
+
+
+function prevSlide()
+{
+	if currentSlide > 0 then
+	{
+		currentSlide -= 1;
+		slides[currentSlide]();
+	}
+}
+
+function nextSlide()
+{
+	if currentSlide < slides.size()-1 then
+	{
+		currentSlide += 1;
+		slides[currentSlide]();
+	}
+}
+
+setEventHandler("canvas.resize", function(event)
+{
+	slides[currentSlide]();
+});
+
+setEventHandler("canvas.keydown", function(event)
+{
+	var lastSlide = currentSlide;
+	if {" ":1, "ArrowRight":1, "Enter":1}.has(event.key) then nextSlide();
+	else if {"Backspace":1, "ArrowLeft":1}.has(event.key) then prevSlide();
+});
+
+setEventHandler("canvas.mousedown", function(event)
+{
+	if event.x > canvas.width()*0.8 then nextSlide();
+	else if event.x < canvas.width()*0.2 then prevSlide();
+});
+
+slides[currentSlide]();
+
+enterEventMode();
