@@ -1,0 +1,262 @@
+var ox = 0, oy = 0;
+
+var zoom = 1;
+var zoom_sq = 1;
+
+var canvasRectDrawFunc = canvas.fillRect;
+
+function draw(data, x, y, wh)
+{
+	
+	if wh < 0.6 then return;
+	
+	if data[0] == true then
+	{
+		canvas.setFillColor(data[1], data[2], data[3], data[4]);
+		wh = -Integer(-wh);
+		canvasRectDrawFunc(x, y, wh, wh);
+	}
+	else
+	{
+		wh /= 2;
+		draw(data[1], x,    y,    wh);
+		draw(data[2], x+wh, y,    wh);
+		
+		draw(data[3], x,    y+wh, wh);
+		draw(data[4], x+wh, y+wh, wh);
+	}
+}
+
+
+class Draw
+{
+public:
+	var stack;
+	var maxDepth;
+	
+	constructor(data, x, y, wh, d = 13)
+	{
+		stack = [[data, x, y, wh]];
+		maxDepth = d;
+	}
+	
+	function executeN(n)
+	{
+		for var i in 0:n do
+		{
+			if stack.size() == 0 then return false;
+			#var e = stack.pop();
+			var ii = Integer(stack.size()*math.random());
+			var e = stack[ii]; stack.remove(ii);
+			
+			var data = e[0], x = e[1], y = e[2], wh = e[3];
+			
+			if wh < 0.6 then continue;
+	
+			if data[0] == true then
+			{
+				canvas.setFillColor(data[1], data[2], data[3], data[4]);
+				wh = -Integer(-wh);
+				canvasRectDrawFunc(x, y, wh, wh);
+			}
+			else
+			{
+				wh /= 2;
+				stack.push([data[4], x+wh, y+wh, wh]);
+				stack.push([data[3], x,    y+wh, wh]);
+
+				stack.push([data[2], x+wh, y,    wh]);
+				stack.push([data[1], x,    y,    wh]);
+			}
+		}
+		return stack.size() != 0;
+	}
+}
+
+function drawAll(data)
+{
+	var dd = math.min(canvas.width(), canvas.height());
+	
+	dd = 2 ^ Integer(math.log2(dd));
+	dd *= zoom;
+	
+	dd = Integer(dd);
+	var lft = Integer((canvas.width()-dd)//2-ox*dd);
+	var top = Integer((canvas.height()-dd)//2-oy*dd);
+	
+	
+	canvas.setFillColor(0.1, 0.1, 0.1);
+	var cw = canvas.width(), ch = canvas.height();
+	var rgt = lft+dd, btm = top+dd;
+	if lft >  0 then canvas.fillRect(0, 0, lft, ch);
+	if top >  0 then canvas.fillRect(math.max(0, lft), 0, math.min(rgt, cw)-lft, top);
+	
+	if rgt < cw then canvas.fillRect(rgt, 0, cw-rgt, ch);
+	if btm < ch then canvas.fillRect(math.max(0, lft), btm, math.min(rgt, cw)-lft, ch-btm);
+	
+	canvas.setLineColor(0.5, 0.5, 0.5);
+	canvas.setLineWidth(1);
+	
+	#draw(data, lft, top, dd);
+	return Draw(data, lft, top, dd);
+}
+
+namespace examples
+{
+	function makeTriangle()
+	{
+		var b = [true, 0, 0, 0, 1];
+		var w = [true, 1, 1, 1, 1];
+		var x = [false, b, null, null, w];
+		x[2] = x; x[3] = x;
+		return x;
+	}
+
+	function makeFrac()
+	{
+		var b = [true, 0, 0, 0, 1];
+		var w = [true, 1, 1, 1, 1];
+		var x = [false, b, null, null, w];
+		var y = [false, x, null, null, x];
+		x[2] = y; x[3] = y;
+		y[2] = y; y[3] = y;
+		return x;
+	}
+	
+	
+	function makeRandom(pal, x = 6, d = 7)
+	{
+		if math.random()*x > d then
+		{
+			return pal[Integer(math.random()*pal.size())];	
+		}
+		else
+		{
+			d -= 1;
+			return [false, makeRandom(pal, x, d), makeRandom(pal, x, d),
+			               makeRandom(pal, x, d), makeRandom(pal, x, d)];
+		}
+	}
+}
+
+function makeClassicPalette()
+{
+	var pal = Array(16);
+	for var i in 0:16 do
+	{
+		var r = (i and 1) // 1;
+		var g = (i and 2) // 2;
+		var b = (i and 4) // 4;
+		var m = (i and 8) // 8 / 2 + 0.5;
+		pal[i] = [true, r*m, g*m, b*m, 1];
+		if i == 8 then
+			pal[i] = [true, 0.75, 0.75, 0.75, 1];
+	}
+	
+	
+	return pal;
+}
+
+function makeGradientPalette(color0, color1=null, size=2)
+{
+	if color1 == null then color1 = color0;
+	
+	var pal = Array(size);
+	for var i in 0:size do
+	{
+		var mul1 = i/(size-1);
+		var mul0 = 1-mul1;
+		pal[i] = [true, color0[0]*mul0 + color1[0]*mul1,
+		                color0[1]*mul0 + color1[1]*mul1,
+		                color0[2]*mul0 + color1[2]*mul1,
+		                color0[3]*mul0 + color1[3]*mul1];
+	}
+	
+	return pal;
+}
+
+function arrayConcat(arrays)
+{
+	var a = [];
+	for var e in arrays do a = Array.concat(a, e);
+	return a;
+}
+
+#var x = examples.makeTriangle();
+#var x = examples.makeFrac();
+
+#var pal = makeClassicPalette();
+var pal = arrayConcat([
+	makeGradientPalette([0, 0, 0, 1], [0, 0, 1, 1], 30),
+	#makeGradientPalette([0, 0, 1, 1], [0, 1, 1, 1], 20),
+	makeGradientPalette([0, 1, 1, 1], [1, 1, 1, 1], 10),
+	
+	makeGradientPalette([0, 0, 0, 1], [1, 1, 0, 1], 3),
+]);
+	
+var x = examples.makeRandom(pal);
+
+var needsRerender = true;
+function requestRender() { needsRerender = true; }
+
+var renderer = null;
+	
+setEventHandler("timer", function(event)
+{
+	
+	if needsRerender then
+	{
+		renderer = drawAll(x);
+		needsRerender = false;
+	}
+	
+	
+	if renderer != null then
+	{
+		var tBegin = time();
+		var i = 0;
+		while renderer.executeN(50) do { i+=1; if time()-tBegin >= 20 then break; }
+		print(i);
+		if i == 0 then renderer = null;
+	}
+});
+
+
+setEventHandler("canvas.keydown", function(e)
+{
+	var keyDir = {ArrowLeft: [-1, 0], ArrowUp: [0, -1], ArrowRight: [1, 0], ArrowDown: [0, 1]};
+	
+	if e.key == "+" or e.key == "-" then
+	{
+		if e.key == "+" then
+			zoom_sq *= 2;
+		else if e.key == "-" then
+			zoom_sq /= 2;
+
+		zoom_sq = math.max(zoom_sq, 2^-8);
+
+		zoom = math.sqrt(zoom_sq);
+
+		requestRender();
+	}
+	else if keyDir.has(e.key) then
+	{
+		var v = keyDir[e.key];
+		ox += v[0]*zoom*0.05; oy += v[1]*zoom*0.05;
+		
+		ox = math.min(math.max(-0.5, ox), 0.5);
+		oy = math.min(math.max(-0.5, oy), 0.5);
+		
+		requestRender();
+	}
+	else if e.key == "p" then
+	{
+		if canvasRectDrawFunc == canvas.fillRect then
+			canvasRectDrawFunc = canvas.frameRect;
+		else
+			canvasRectDrawFunc = canvas.fillRect;
+		requestRender();
+	}
+});
+
+enterEventMode();
