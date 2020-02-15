@@ -5,27 +5,27 @@ var zoom_sq = 1;
 
 var canvasRectDrawFunc = canvas.fillRect;
 
-function draw(data, x, y, wh)
-{
+# function draw(data, x, y, wh)
+# {
 	
-	if wh < 0.6 then return;
+# 	if wh < 0.6 then return;
 	
-	if data[0] == true then
-	{
-		canvas.setFillColor(data[1], data[2], data[3], data[4]);
-		wh = -Integer(-wh);
-		canvasRectDrawFunc(x, y, wh, wh);
-	}
-	else
-	{
-		wh /= 2;
-		draw(data[1], x,    y,    wh);
-		draw(data[2], x+wh, y,    wh);
+# 	if data[0] == true then
+# 	{
+# 		canvas.setFillColor(data[1], data[2], data[3], data[4]);
+# 		wh = -Integer(-wh);
+# 		canvasRectDrawFunc(x, y, wh, wh);
+# 	}
+# 	else
+# 	{
+# 		wh /= 2;
+# 		draw(data[1], x,    y,    wh);
+# 		draw(data[2], x+wh, y,    wh);
 		
-		draw(data[3], x,    y+wh, wh);
-		draw(data[4], x+wh, y+wh, wh);
-	}
-}
+# 		draw(data[3], x,    y+wh, wh);
+# 		draw(data[4], x+wh, y+wh, wh);
+# 	}
+# }
 
 
 class Draw
@@ -40,8 +40,15 @@ public:
 		maxDepth = d;
 	}
 	
+	function enqueue(subData, x, y, wh)
+	{
+		# put at the bottom of the stack
+		stack = Array.concat([[subData, x, y, wh]], stack);
+	}
+	
 	function executeN(n)
 	{
+		var cw = canvas.width(), ch = canvas.height();
 		for var i in 0:n do
 		{
 			if stack.size() == 0 then return false;
@@ -52,11 +59,13 @@ public:
 			var data = e[0], x = e[1], y = e[2], wh = e[3];
 			
 			if wh < 0.6 then continue;
+			if x+wh < 0 or x > cw then
+			if y+wh < 0 or y > ch then continue;
 	
 			if data[0] == true then
 			{
 				canvas.setFillColor(data[1], data[2], data[3], data[4]);
-				wh = -Integer(-wh);
+				wh = math.ceil(wh);
 				canvasRectDrawFunc(x, y, wh, wh);
 			}
 			else
@@ -73,21 +82,35 @@ public:
 	}
 }
 
-function drawAll(data)
+function getRenderedSquare()
 {
+	var cw = canvas.width(), ch = canvas.height();
+	
 	var dd = math.min(canvas.width(), canvas.height());
 	
-	dd = 2 ^ Integer(math.log2(dd));
+	dd = 2 ^ math.floor(math.log2(dd));
 	dd *= zoom;
 	
-	dd = Integer(dd);
-	var lft = Integer((canvas.width()-dd)//2-ox*dd);
-	var top = Integer((canvas.height()-dd)//2-oy*dd);
+	dd = math.floor(dd);
+	var lft = math.floor((cw-dd)//2-ox*dd);
+	var top = math.floor((ch-dd)//2-oy*dd);
+	
+	canvas.setFillColor(0.1, 0.1, 0.1);
+	var rgt = lft+dd, btm = top+dd;
+	
+	return [lft, top, rgt, btm, dd];
+}
+
+function drawAll(data)
+{
+	var sq = getRenderedSquare();
+	var lft = sq[0], top = sq[1], rgt = sq[2], btm = sq[3], dd = sq[4];
+	
+	var cw = canvas.width(), ch = canvas.height();
 	
 	
 	canvas.setFillColor(0.1, 0.1, 0.1);
-	var cw = canvas.width(), ch = canvas.height();
-	var rgt = lft+dd, btm = top+dd;
+	
 	if lft >  0 then canvas.fillRect(0, 0, lft, ch);
 	if top >  0 then canvas.fillRect(math.max(0, lft), 0, math.min(rgt, cw)-lft, top);
 	
@@ -139,6 +162,256 @@ namespace examples
 	}
 }
 
+
+
+
+function setField(array, x, y, newElement)
+{
+	var arrayRef = [array];
+	
+	var cRef = arrayRef, cIndx = 0;
+	
+	while true do
+	{
+		if cRef[cIndx][0] then
+		{
+			cRef[cIndx] = newElement;
+			break;
+		}
+		else
+		{
+			x*=2; y*=2;
+			
+			cRef = cRef[cIndx];
+			cIndx = Integer(x) + Integer(y)*2 + 1;
+			x%=1; y%=1;
+		}
+	}
+	
+	return arrayRef[0];
+}
+
+function setFieldAtDepth(array, x, y, depth, newElement)
+{
+	var arrayRef = [array];
+	
+	var cRef = arrayRef, cIndx = 0;
+	
+	var depthChanged = depth;
+	
+	for var i in 0:depth do
+	{
+		if cRef[cIndx][0] then
+		{
+			depthChanged = math.min(depthChanged, i);
+			if cRef[cIndx] == newElement then return [arrayRef[0], depthChanged];
+			cRef[cIndx] = [false, cRef[cIndx], cRef[cIndx], cRef[cIndx], cRef[cIndx]];
+		}
+		
+		x*=2; y*=2;
+
+		cRef = cRef[cIndx];
+		cIndx = Integer(x) + Integer(y)*2 + 1;
+		x%=1; y%=1;
+	}
+	
+	cRef[cIndx] = newElement;
+	
+	return [arrayRef[0], depthChanged];
+}
+
+
+
+function setFieldAtDepthOptX(array, x, y, depth, newElement, curDepth = 0)
+{
+	
+	if depth != curDepth then
+	{
+		var thisChanged = false;
+		if array[0] then
+		{
+			if array == newElement then return [array, curDepth];
+			array = [false, array, array, array, array];
+			thisChanged = true;
+		}
+		
+		x*=2; y*=2;
+
+		var indx = Integer(x) + Integer(y)*2 + 1;
+		x%=1; y%=1;
+		
+		var res = setFieldAtDepthOptX(array[indx], x, y, depth, newElement, curDepth+1);
+		var arraySub = res[0];
+		var chgDepth = res[1];
+		
+		#if chgDepth == curDepth+1 then
+		if arraySub != array[indx] then
+		{
+			array[indx] = arraySub;
+			var a = array[1];
+			var b = array[2];
+			var c = array[3];
+			var d = array[4];
+
+			if a[0] then if b[0] and c[0] and d[0] then
+			if a == b then if a == c and a == d then
+			{
+				return [a, curDepth];
+			}
+		}
+		if thisChanged then chgDepth = curDepth;
+		return [array, chgDepth];
+	}
+	else
+	{
+		return [newElement, depth];		
+	}
+}
+
+## automaticly optimizes
+# function setFieldAtDepthOpt(array, x, y, depth, newElement)
+# {	
+# 	var arrayRef = [array];
+# 	var stackRefs = []
+	
+# 	var cRef = arrayRef, cIndx = 0;
+	
+# 	var depthChanged = depth;
+	
+# 	for var i in 0:depth do
+# 	{
+# 		stackRefs.push([arrayRef, cIndx]);
+		
+# 		if cRef[cIndx][0] then
+# 		{
+# 			depthChanged = math.min(depthChanged, i);
+# 			if cRef[cIndx] == newElement then return [arrayRef[0], depthChanged];
+# 			cRef[cIndx] = [false, cRef[cIndx], cRef[cIndx], cRef[cIndx], cRef[cIndx]];
+# 		}
+		
+# 		x*=2; y*=2;
+
+# 		cRef = cRef[cIndx];
+# 		cIndx = Integer(x) + Integer(y)*2 + 1;
+# 		x%=1; y%=1;
+# 	}
+	
+# 	cRef[cIndx] = newElement;
+	
+# 	return [arrayRef[0], depthChanged];
+# }
+
+function getField(array, x, y)
+{
+	var cFld = array;
+	var depth = 0;
+	while true do
+	{
+		if cFld[0] then
+		{
+			return [cFld, depth];
+		}
+		else
+		{
+			x*=2; y*=2;
+			
+			cFld = cFld[Integer(x) + Integer(y)*2 + 1];
+			x%=1; y%=1;
+			depth += 1;
+		}
+	}
+}
+
+function getFieldAtDepth(array, x, y, depth)
+{
+	
+	
+	var cFld = array;
+	for var i in 0:depth do
+	{
+		if cFld[0] then
+		{
+			return null;
+		}
+		else
+		{
+			x*=2; y*=2;
+			
+			cFld = cFld[Integer(x) + Integer(y)*2 + 1];
+			x%=1; y%=1;
+			depth += 1;
+		}
+	}
+	return cFld;
+}
+
+# returns an optimized copy of data,
+# note that leaves are not copied
+function optimize(data)
+{
+	if data[0] then return data;
+	
+	var a = optimize(data[1]);
+	var b = optimize(data[2]);
+	var c = optimize(data[3]);
+	var d = optimize(data[4]);
+	
+	if a[0] then if b[0] and c[0] and d[0] then
+	{
+		if a == b then if a == c and a == d then
+		{
+			return a;	
+		}
+	}
+	return [false, a, b, c, d];
+}
+
+
+function drawDotAtDepth(data, x, y, depth, newElement, enqueueDirty)
+{
+	if x < 0 or y < 0 or x >= 1 or y >= 1 then return data;
+	
+	var res = setFieldAtDepthOptX(data, x, y, depth, newElement);
+	
+	enqueueDirty(data, x, y, res[1]);
+	
+	return res[0];
+}
+
+
+function drawLineAtDepth(data, x0, y0, x1, y1, depth, newElement, enqueueDirty)
+{
+	var dd = 2^(-depth);
+	x0 = x0//dd*dd; y0 = y0//dd*dd;
+	x1 = x1//dd*dd; y1 = y1//dd*dd;
+	
+	
+	var xD = x1-x0, yD = y1-y0;
+	x0 += 0.5*dd; y0+=0.5*dd;
+	var samples;
+	samples = Integer(math.max(math.abs(xD), math.abs(yD))*2^depth);
+	if samples == 0 then
+		return drawDotAtDepth(data, x0, y0, depth, newElement, enqueueDirty);
+		
+# 	if math.abs(xD) < math.abs(yD) then
+# 		samples = Integer(math.abs(yD)*2^depth)
+# 	else
+# 		samples = Integer(math.abs(xD)*2^depth)
+		
+	for var i in 0:samples+1 do
+	{
+		var m = i/samples;
+		var x = x0 + xD*m, y = y0 + yD*m;
+		data = drawDotAtDepth(data, x, y, depth, newElement, enqueueDirty);
+	}
+	return data;
+	
+}
+
+
+
+
+
 function makeClassicPalette()
 {
 	var pal = Array(16);
@@ -182,8 +455,8 @@ function arrayConcat(arrays)
 	return a;
 }
 
-#var x = examples.makeTriangle();
-#var x = examples.makeFrac();
+var dispData = examples.makeTriangle();
+#var dispData = examples.makeFrac();
 
 #var pal = makeClassicPalette();
 var pal = arrayConcat([
@@ -193,20 +466,46 @@ var pal = arrayConcat([
 	
 	makeGradientPalette([0, 0, 0, 1], [1, 1, 0, 1], 3),
 ]);
-	
-var x = examples.makeRandom(pal);
+
+
+#var dispData = examples.makeRandom(pal);
+#var dispData = [true, 1, 1, 1, 1];
+
+var brushSize = 5;
 
 var needsRerender = true;
-function requestRender() { needsRerender = true; }
-
 var renderer = null;
+
+function requestRender() { needsRerender = true; }
+function requestRenderAt(x, y, depth)
+{
+	var sq = getRenderedSquare();
+	var lft = sq[0], top = sq[1], rgt = sq[2], btm = sq[3], dd = sq[4];
+	
+	var field;
+	if false then
+	{
+		field = getFieldAtDepth(dispData, x, y, depth);
+		if field == null then return;
+	}
+	else
+	{
+		var fieldAndDepth = getField(dispData, x, y);
+		field = fieldAndDepth[0]; depth = fieldAndDepth[1];
+	}
+	var wh = 2^(-depth);
+	var fLft = lft + (x//wh)*wh*dd;
+	var fTop = top + (y//wh)*wh*dd;
+	renderer.enqueue(field, fLft, fTop, wh*dd);
+}
+
 	
 setEventHandler("timer", function(event)
 {
 	
 	if needsRerender then
 	{
-		renderer = drawAll(x);
+		renderer = drawAll(dispData);
 		needsRerender = false;
 	}
 	
@@ -216,11 +515,15 @@ setEventHandler("timer", function(event)
 		var tBegin = time();
 		var i = 0;
 		while renderer.executeN(50) do { i+=1; if time()-tBegin >= 20 then break; }
-		print(i);
-		if i == 0 then renderer = null;
+		#if i != 0 then print(i);
+		##if i == 0 then renderer = null;
 	}
 });
 
+setEventHandler("canvas.resize", function(e)
+{
+	requestRender();
+});
 
 setEventHandler("canvas.keydown", function(e)
 {
@@ -233,16 +536,25 @@ setEventHandler("canvas.keydown", function(e)
 		else if e.key == "-" then
 			zoom_sq /= 2;
 
-		zoom_sq = math.max(zoom_sq, 2^-8);
+		zoom_sq = math.max(2^-8, zoom_sq);
+		#zoom_sq = math.min(zoom_sq, 2^23);
 
 		zoom = math.sqrt(zoom_sq);
 
 		requestRender();
 	}
+	if e.key == "," or e.key == "." then
+	{
+		if e.key == "," then brushSize -= 1;
+		else brushSize += 1;
+		
+		brushSize = math.max(0, brushSize);
+	}
 	else if keyDir.has(e.key) then
 	{
 		var v = keyDir[e.key];
-		ox += v[0]*zoom*0.05; oy += v[1]*zoom*0.05;
+		var spd = 0.1/zoom;
+		ox += v[0]*spd; oy += v[1]*spd;
 		
 		ox = math.min(math.max(-0.5, ox), 0.5);
 		oy = math.min(math.max(-0.5, oy), 0.5);
@@ -257,6 +569,80 @@ setEventHandler("canvas.keydown", function(e)
 			canvasRectDrawFunc = canvas.fillRect;
 		requestRender();
 	}
+	else if e.key == "o" then
+	{
+		dispData = optimize(dispData);	
+		requestRender();
+	}
+	else if e.key == "x" then
+	{
+		var x0 = math.random(), y0 = math.random();
+		var x1 = math.random(), y1 = math.random();
+		var col = [true, math.random(), math.random(), math.random(), 1];
+		#dispData = drawLineAtDepth(dispData, x0, y0, x1, y1, brushSize, col);
+		requestRender();
+	}
 });
+
+var lastX, lastY;
+namespace cacheVars
+{	
+	var lft, top, rgt, btm, dd;
+	
+	function cacheVarsUpdate()
+	{
+		var sq = getRenderedSquare();
+		lft = sq[0]; top = sq[1]; rgt = sq[2]; btm = sq[3]; dd = sq[4];
+	}
+};
+function toCanvasSpace(x, y)
+{
+	use namespace cacheVars;
+	return [(x-lft) / dd, (y-top) / dd];
+}
+function paintEvent(event)
+{
+	use namespace cacheVars;
+	cacheVarsUpdate();
+	
+	var brush = [true, 0, 0, 0, 1];
+	if event.buttons == ["right"] then brush = [true, 1, 1, 1, 1];
+	
+	if lft <= event.x and event.x < rgt and
+	   top <= event.y and event.y < btm then
+	{
+		var p0 = toCanvasSpace(lastX, lastY);
+		var p1 = toCanvasSpace(event.x, event.y);
+		var queue = [];
+		var enqueueDirty = function[queue](data, x, y, depth)
+		{
+			#dispData = setField(dispData, x, y, brush);
+			#var res = setFieldAtDepthOptX(dispData, x, y, brushSize, brush); # 2^-5
+			queue.push([x, y, depth]);
+		};
+		
+		dispData = drawLineAtDepth(dispData, p0[0], p0[1], p1[0], p1[1], brushSize, brush, enqueueDirty);
+		for var p in queue do
+			requestRenderAt(p[0], p[1], p[2]); # x, y, depth
+		#requestRender();
+	}
+}
+
+setEventHandler("canvas.mousedown", function(event)
+{
+	lastX = event.x; lastY = event.y;
+	paintEvent(event);
+});
+
+setEventHandler("canvas.mousemove", function(event)
+{
+	if event.buttons.size() != 0 then
+	{
+		paintEvent(event);
+		lastX = event.x; lastY = event.y;
+	}
+		
+});
+
 
 enterEventMode();
