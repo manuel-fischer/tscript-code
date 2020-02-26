@@ -11,7 +11,8 @@ function minuteToCoord(minute)
 
 function renderClock(event)
 {
-	#print(lastTSec + " is " + hour+":"+min+":"+sec);
+	var sX = 0.5, sY = 1; # shadow offset
+	
 	canvas.setFillColor(0.5, 0.5, 0.5);
 	canvas.clear();
 	# Set origin of coordinate system to the center of the canvas
@@ -22,6 +23,9 @@ function renderClock(event)
 	canvas.setLineColor(0, 0, 0);
 	canvas.setFillColor(1, 1, 1);
 	canvas.frameCircle(0, 0, 95);
+	canvas.setLineColor(0, 0, 0, 0.2);
+	canvas.circle(sX, sY, 95);
+	canvas.setLineColor(0, 0, 0);
 	
 	# draw lines and numbers
 	canvas.setTextAlign("center");
@@ -52,35 +56,48 @@ function renderClock(event)
 	# draw clock handles
 	## hour
 	{
-		canvas.setLineWidth(2);
+		canvas.setLineWidth(3);
 		
 		var xy = minuteToCoord(hour*5);
 		var x = xy[0], y = xy[1];
 		
+		canvas.setLineColor(0, 0, 0, 0.2);
+		canvas.line(x*-10+sX, y*-10+sY, x*40+sX, y*40+sY); # shadow
+		canvas.setLineColor(0, 0, 0, 1);
 		canvas.line(x*-10, y*-10, x*40, y*40);
 	}
 	## minute
 	{
-		canvas.setLineWidth(1.35);
+		canvas.setLineWidth(2.7);
 		
 		var xy = minuteToCoord(min);
 		var x = xy[0], y = xy[1];
 		
+		canvas.setLineColor(0, 0, 0, 0.2);
+		canvas.line(x*-10+sX, y*-10+sY, x*60+sX, y*60+sY); # shadow
+		canvas.setLineColor(0, 0, 0, 1);
 		canvas.line(x*-10, y*-10, x*60, y*60);
 	}
 	## second
 	{
-		canvas.setLineWidth(1);
-		canvas.setLineColor(0.9, 0, 0);
+		canvas.setLineWidth(2);
 		
 		var xy = minuteToCoord(sec);
 		var x = xy[0], y = xy[1];
 		
+		canvas.setLineColor(0, 0, 0, 0.2);
+		canvas.line(x*-10+sX, y*-10+sY, x*80+sX, y*80+sY); # shadow
+		canvas.setLineColor(0.9, 0, 0);
 		canvas.line(x*-10, y*-10, x*80, y*80);
 	}
 	
+	canvas.setLineWidth(1.5);
+	canvas.setLineColor(0, 0, 0, 0.2);
+	canvas.setFillColor(0, 0, 0, 0.2);
+	canvas.frameCircle(sX, sY, 2);
+	canvas.setLineColor(0.9, 0, 0);
 	canvas.setFillColor(0, 0, 0);
-	canvas.frameCircle(0, 0, 1.5);
+	canvas.frameCircle(0, 0, 2);
 	
 }
 
