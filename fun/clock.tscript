@@ -1,0 +1,101 @@
+# A simple clock
+
+var toRad = math.pi()/180;
+var lastTSec = 0;
+var hour = 0, min = 0, sec = 0;
+
+function minuteToCoord(minute)
+{
+	return [math.sin(minute*6*toRad), -math.cos(minute*6*toRad)];
+}
+
+function renderClock()
+{
+	#print(lastTSec + " is " + hour+":"+min+":"+sec);
+	canvas.setFillColor(0.5, 0.5, 0.5);
+	canvas.clear();
+	# Set origin of coordinate system to the center of the canvas
+	# scale it, so that it is at least 100 units to the border
+	canvas.shift(canvas.width()/2, canvas.height()/2);
+	canvas.scale(math.min(canvas.width(), canvas.height())/2/110);
+	canvas.setLineWidth(10);
+	canvas.setLineColor(0, 0, 0);
+	canvas.setFillColor(1, 1, 1);
+	canvas.frameCircle(0, 0, 95);
+	
+	# draw lines and numbers
+	canvas.setTextAlign("center");
+	var fontSize = 22;
+	canvas.setFont("helvetica", fontSize);
+	canvas.setFillColor(0, 0, 0);
+	for var i in 1:61 do
+	{
+		var mul = 1;
+		#if i % 15 == 0 then mul = 1.5;
+		if i % 5 != 0 then mul = 0.5;
+		
+		canvas.setLineWidth(mul);
+		
+		var xy = minuteToCoord(i);
+		var x = xy[0], y = xy[1];
+		
+		var r = 87 - 7*mul;
+		canvas.line(87*x, 87*y, r*x, r*y);
+		
+		if i % 5 == 0 then
+		{
+			canvas.text(65*x, 65*y-fontSize/2, i/5);
+		}
+	}
+	
+	# draw clock handles
+	## hour
+	{
+		canvas.setLineWidth(2);
+		
+		var xy = minuteToCoord(hour*5);
+		var x = xy[0], y = xy[1];
+		
+		canvas.line(x*-10, y*-10, x*40, y*40);
+	}
+	## minute
+	{
+		canvas.setLineWidth(1.35);
+		
+		var xy = minuteToCoord(min);
+		var x = xy[0], y = xy[1];
+		
+		canvas.line(x*-10, y*-10, x*60, y*60);
+	}
+	## second
+	{
+		canvas.setLineWidth(1);
+		canvas.setLineColor(0.9, 0, 0);
+		
+		var xy = minuteToCoord(sec);
+		var x = xy[0], y = xy[1];
+		
+		canvas.line(x*-10, y*-10, x*80, y*80);
+	}
+	
+	canvas.setFillColor(0, 0, 0);
+	canvas.frameCircle(0, 0, 1.5);
+	
+}
+
+function updateClock(event)
+{
+	var tSec = localtime() // 1000;
+	if tSec != lastTSec then
+	{
+		lastTSec = tSec;
+		sec  = tSec % 60;
+		min  = (tSec / 60) % 60;
+		hour = (tSec / 3600) % 24;
+		renderClock();
+	}
+}
+
+setEventHandler("timer", updateClock);
+setEventHandler("canvas.resize", updateClock);
+enterEventMode();

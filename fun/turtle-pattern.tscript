@@ -1,0 +1,15 @@
+# A complex pattern out of simple code
+
+## align whole drawing to the center
+turtle.pen(false);
+turtle.turn(-90);
+turtle.move(63);
+turtle.turn(+90);
+turtle.pen(true);
+
+## The important code is here
+for var z in 1:2161 do
+{
+	turtle.move(1);
+	turtle.turn(z*z);
+}
