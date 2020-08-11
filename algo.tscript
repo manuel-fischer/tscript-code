@@ -117,7 +117,7 @@ namespace algo
 	function binary_locate(a, elem)
 	{
 		var l = 0, r = a.size()-1;
-	while l <= r do
+		while l <= r do
 		{
 			var c = l+(r-l)//2;
 			if elem < a[c] then
