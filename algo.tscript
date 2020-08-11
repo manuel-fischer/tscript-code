@@ -23,75 +23,75 @@ namespace algo
 
 	function items(a)
 	{
-		return transform(a.keys(), function[a](k){ return [k, a[k]]; });	
+		return transform(a.keys(), function[a](k){ return [k, a[k]]; });
 	}
 
 	function enumerate(a)
 	{
-		return zip(0:a.size(), a);	
+		return zip(0:a.size(), a);
 	}
-	
+
 	function reverse(a)
 	{
 		var ret = Array(a.size());
 		for var i in 0:a.size() do ret[i] = a[a.size()-i-1];
 		return ret;
 	}
-	
+
 	function remove_if(a, func)
 	{
 		var ret = [];
 		for	var e in a do if not func(e) then ret.push(e);
 		return ret;
 	}
-    
+
 	function remove_if_not(a, func)
 	{
 		var ret = [];
 		for	var e in a do if func(e) then ret.push(e);
 		return ret;
 	}
-	
+
 	function find_if(a, func)
 	{
-		for var i in 0:a.size() do if func(a[i]) then return i;	
+		for var i in 0:a.size() do if func(a[i]) then return i;
 		return null;
 	}
-	
+
 	function find(a, elem)
 	{
 		for var i in 0:a.size() do if a[i] == elem then return i;
 		return null;
 	}
-	
+
 	function count_if(a, func)
 	{
 		var c = 0;
 		for var e in a do if func(e) then c+=1;
 		return c;
 	}
-	
+
 	function count(a, elem)
 	{
 		var c = 0;
 		for var e in a do if e == elem then c+=1;
 		return c;
 	}
-	
+
 	function replace_if(a, func, new_elem)
 	{
 		var ret = Array(a);
 		for var i in 0:a.size() do if func(ret[i]) then ret[i] = new_elem;
 		return ret;
 	}
-	
+
 	function replace(a, old_elem, new_elem)
 	{
 		var ret = Array(a);
 		for var i in 0:a.size() do if ret[i] == old_elem then ret[i] = new_elem;
 		return ret;
 	}
-	
+
 	# Searches for the first occurrence from start of the sequence of elements of b in a
 	function search_subarray(a, b, start=0)
 	{
@@ -104,20 +104,20 @@ namespace algo
 					equal = false;
 					break; # breaks inner loop
 				}
-				
+
 			if equal then return i;
 		}
 		return null;
 	}
-    
-    
+
+
 	# binary search on an element, if the element is contained
 	# the return value maps to the element
 	# otherwise the best position is returned
 	function binary_locate(a, elem)
 	{
 		var l = 0, r = a.size()-1;
-        while l <= r do
+	while l <= r do
 		{
 			var c = l+(r-l)//2;
 			if elem < a[c] then
@@ -129,14 +129,14 @@ namespace algo
 		}
 		return l;
 	}
-	
+
 	# binary search on an element, if the element is contained
 	# the return value maps to the element
 	# otherwise null is returned
 	function binary_search(a, elem)
 	{
 		var l = 0, r = a.size()-1;
-        while l <= r do
+		while l <= r do
 		{
 			var c = l+(r-l)//2;
 			if elem < a[c] then
@@ -148,11 +148,11 @@ namespace algo
 		}
 		return null;
 	}
-    
-    ## aliases
-    
-    var filter = remove_if_not;
-    var map = transform;
+
+	## aliases
+
+	var filter = remove_if_not;
+	var map = transform;
 	var index = find; # like pythons list.index(e) method
 }
 
