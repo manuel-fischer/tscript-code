@@ -1,0 +1,120 @@
+class Spring
+{
+public:
+	var amp = 1, vel = 0;
+	var mul = 0.1;
+	
+	var pamp = 1, pvel = 0;
+	var pmul = 0.1;
+	static var A = 5;
+	function tick()
+	{
+		amp += vel*mul;
+		vel -= amp*mul;
+		vel *= 0.99;
+	}
+	
+	function render()
+	{
+		var dw = function(a, v,  r, g, b, w)
+		{
+			canvas.setLineColor(r, g, b);
+			canvas.setLineWidth(w);
+			canvas.circle(v*canvas.width()*A, (0.1+0.4*(a+1))*canvas.height(), 0.1*canvas.height());
+		};
+		dw(amp, mul, 0, 0, 0, 1);
+		dw(pamp, pmul, 1, 1, 1, 2);
+		dw(amp, mul, 0, 0, 0, 1);
+		
+		canvas.setLineColor(0.5, 0.5, 0.5);
+		canvas.setLineWidth(2);
+		canvas.line(0, canvas.height()//2, canvas.width(), canvas.height()//2);
+		
+		
+		pamp = amp;
+		pvel = vel;
+		pmul = mul;
+	}
+	
+	function clickmouse(x, y)
+	{
+		mul = x/canvas.width()/A;
+		#mul = ((x/canvas.width()-0.1)/0.4-1);
+		amp = ((y/canvas.height()-0.1)/0.4-1);
+		vel = 0;
+	}
+	
+	function sound()
+	{
+		var rate = 30000;
+		var arr = Array(10000);
+		var samp = amp, svel = vel;
+		var i;
+		var isq = 1/(amp^2+vel^2);
+		var minimizes = false;
+		var dist = 0;
+		for i in arr.keys() do
+		{
+			samp += svel*mul;
+			svel -= samp*mul;
+			arr[i] = samp*0.1;
+			
+			if i > 100 then
+			{
+				var dist2 = ((samp-amp)^2 + (svel-vel)^2)*isq;
+				if dist2 < 0.1 then
+				{
+					if minimizes then
+					{ if dist<dist2 then break; }
+					else
+						minimizes = true;
+					dist = dist2;
+				}
+			}
+		}
+		arr = arr[0:i];
+		while arr.size() < 2*rate do
+			arr = Array.concat(arr, arr);
+		
+		return audio.MonoAudio(arr, rate);
+	}
+}
+
+var spring = Spring();
+var snd = spring.sound();
+snd.play();
+var i = 0;
+var MAXI = 60;
+setEventHandler("timer", function(event)
+{
+	spring.tick();
+	spring.render();
+	if i > MAXI then
+	{
+		var snd2 = spring.sound();
+		snd2.play();
+		snd.pause();
+		snd = snd2;
+		i = 0;
+	}
+	i+=1;
+});
+
+setEventHandler("canvas.mousedown", function(event)
+{
+	canvas.setFillColor(1, 1, 1);
+	canvas.clear();
+	spring.clickmouse(event.x, event.y);
+	i = MAXI;
+});
+
+setEventHandler("canvas.mousemove", function(event)
+{
+	if event.buttons.size() != 0 then
+	{
+		spring.clickmouse(event.x, event.y);
+		i = math.max(i, MAXI/1);
+	}
+});
+
+enterEventMode();
