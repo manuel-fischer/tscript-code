@@ -168,5 +168,7 @@ setEventHandler("canvas.mousedown", function(e)
 	}
 });
 
+print("Linksklick für setLineColor");
+print("Rechtsklick für setFillColor");
 enterEventMode();
 
