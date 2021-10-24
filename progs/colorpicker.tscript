@@ -1,0 +1,172 @@
+var DARKMODE = false; # Theme
+
+var COLORS = [
+	["Weiß",          1,   1,   1],
+	["Hellgrau",    0.7, 0.7, 0.7],
+	["Grau",        0.5, 0.5, 0.5],
+	["Schwarz",       0,   0,   0],
+	["Rosa",          1, 0.5, 0.5],
+	["Rot",           1,   0,   0],
+	["Dunkelrot",   0.5,   0,   0],
+	["Orange",        1, 0.5,   0],
+	["Braun",       0.5, 0.3, 0.1],
+	["Gelb",          1,   1,   0],
+	["Zitrusgrün",  0.7,   1,   0],
+	["Grün",          0,   1,   0],
+	["Dunkelgrün",    0, 0.5,   0],
+	["Cyan",          0,   1,   1],
+	["Aqua",          0, 0.5, 0.5],
+	["Blau",          0,   0,   1],
+	["Dunkelblau",    0,   0, 0.5],
+	["Magenta",       1,   0,   1],
+	["Violett",     0.5,   0, 0.5],
+];
+
+
+var HEADER_HEIGHT = 60;
+var ENTRY_HEIGHT = 40;
+
+
+function adjustColor(x)
+{
+	if DARKMODE then
+		return 1-x*0.9;
+	else
+		return x;
+}
+
+function setFillColorAdjusted(gray)
+{
+	var g = adjustColor(gray);
+	canvas.setFillColor(g, g, g);
+}
+
+function setLineColorAdjusted(gray)
+{
+	var g = adjustColor(gray);
+	canvas.setLineColor(g, g, g);
+}
+
+function drawHeader(scale)
+{
+	canvas.setFillColor(0.1, 0.2, 0.3);
+	canvas.fillRect(0, 0, canvas.width()/scale, HEADER_HEIGHT);
+	
+	setFillColorAdjusted(0);
+	canvas.fillRect(0, HEADER_HEIGHT-2, canvas.width()/scale, 2);
+	
+	canvas.setFont("helvetica", 30);
+	canvas.setTextAlign("center");
+	canvas.setFillColor(0, 0, 0);
+	canvas.text(canvas.width()/scale/2+3, 15+3, "Farbübersicht");
+	canvas.setFillColor(1, 1, 1);
+	canvas.text(canvas.width()/scale/2, 15, "Farbübersicht");
+}
+
+function drawColor(name, r, g, b, back, scale)
+{
+	setFillColorAdjusted(back);
+	canvas.fillRect(0, 0, canvas.width()/scale, 40);
+	
+	setLineColorAdjusted(0);
+	canvas.setFillColor(r, g, b);
+	canvas.frameRect(10, 10, 20, 20);
+	
+	setFillColorAdjusted(0);
+	canvas.setFont("helvetica", 20);
+	canvas.setTextAlign("left");
+	canvas.text(40, 10, name);
+	canvas.setFont("monospace", 18);
+	
+	if DARKMODE then canvas.setFillColor(1, 0.5, 0.5);
+	else             canvas.setFillColor(0.5, 0, 0);
+	canvas.text(200, 12, r);
+	
+	if DARKMODE then canvas.setFillColor(0.5, 1, 0.5);
+	else             canvas.setFillColor(0, 0.5, 0);
+	canvas.text(260, 12, g);
+	
+	if DARKMODE then canvas.setFillColor(0.5, 0.5, 1);
+	else             canvas.setFillColor(0, 0, 0.5);
+	canvas.text(320, 12, b);
+}
+
+var selected = -1;
+
+function getScale()
+{
+	var scaleX = canvas.width() / 400;
+	var scaleY = canvas.height() / (COLORS.size()*40+60);
+	return math.min(scaleX, scaleY);
+}
+
+function drawEnt(i, scale, back = null)
+{
+	var ent = COLORS[i];
+	if back == null then back = (i%2)*0.05 + 0.95;
+	drawColor(ent[0], ent[1], ent[2], ent[3], back, scale);
+}
+
+function draw()
+{
+	setFillColorAdjusted(1);
+	canvas.clear();
+
+	var scale = getScale();
+
+	canvas.reset();
+	canvas.scale(scale);
+	drawHeader(scale);
+	canvas.shift(0, HEADER_HEIGHT);
+	for var i in COLORS.keys() do
+	{
+		drawEnt(i, scale);
+		canvas.shift(0, ENTRY_HEIGHT);
+	}
+}
+
+draw();
+
+setEventHandler("canvas.resize", function(e) { draw(); });
+setEventHandler("canvas.mousemove", function(e)
+{
+	var scale = getScale();
+	var newSelected = Integer((e.y/scale - HEADER_HEIGHT) // ENTRY_HEIGHT);
+	if newSelected != selected then
+	{
+		canvas.reset();
+		canvas.scale(scale);
+		canvas.shift(0, HEADER_HEIGHT);
+	
+		if selected >= 0 and selected < COLORS.size() then
+		{
+			canvas.shift(0, ENTRY_HEIGHT*selected);
+			drawEnt(selected, scale);
+			canvas.shift(0, -ENTRY_HEIGHT*selected);
+		}
+		
+		if newSelected >= 0 and newSelected < COLORS.size() then
+		{
+			canvas.shift(0, ENTRY_HEIGHT*newSelected);
+			drawEnt(newSelected, scale, 0.8);
+			#canvas.shift(0, -ENTRY_HEIGHT*newSelected);
+		}
+	}
+	selected = newSelected;
+});
+setEventHandler("canvas.mousedown", function(e)
+{
+	if selected >= 0 and selected < COLORS.size() then
+	{
+		var ent = COLORS[selected];
+		
+		var method = "setLineColor";
+		if e.button == "right" then
+			method = "setFillColor";
+		
+		print("canvas." + method + "(" + ent[1] + ", " + ent[2] + ", " + ent[3] + "); # " + ent[0]);
+	}
+});
+
+enterEventMode();
+
