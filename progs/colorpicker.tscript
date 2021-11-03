@@ -1,0 +1,558 @@
+function gradient(x, y, w, h, c0, c1, conv)
+{
+	var r0 = c0[0], g0 = c0[1], b0 = c0[2], a0 = 1; if c0.size() == 4 then a0 = c0[3];
+	var r1 = c1[0], g1 = c1[1], b1 = c1[2], a1 = 1; if c1.size() == 4 then a1 = c1[3];
+	
+	var p = math.max(math.max(math.abs(r0-r1), math.abs(g0-g1)), math.max(math.abs(b0-b1), math.abs(a0-a1)));
+	
+	var prec = math.min(math.min(Integer(w), Integer(p*255)), 60);
+	
+	for var i in 0:prec do
+	{
+		var m = i / (prec-1);
+		var r = r0 + m*(r1-r0);
+		var g = g0 + m*(g1-g0);
+		var b = b0 + m*(b1-b0);
+		var a = a0 + m*(a1-a0);
+		var rgb = conv([r, g, b]);
+		
+		canvas.setFillColor(rgb[0], rgb[1], rgb[2], a);
+		var x0 = x + w *  i    // prec;
+		var x1 = x + w * (i+1) // prec;
+		canvas.fillRect(x0, y, x1-x0, h);
+	}
+}
+
+
+var HEX_CHARS = {"0":0, "1":1, "2":2, "3":3, "4":4, "5":5, "6":6, "7":7, "8":8, "9":9,
+                 a:10, b:11, c:12, d:13, e:14, f:15,
+				 A:10, B:11, C:12, D:13, E:14, F:15};
+var HEX_OUT_CHARS = "0123456789abcdef";
+
+function int_from_hex(s)
+{	
+	var n = 0;
+	for var i in 0:s.size() do
+	{
+		if not HEX_CHARS.has(s[i:i+1]) then return null;
+		n *= 16;
+		n += HEX_CHARS[s[i:i+1]];
+	}
+	return n;
+}
+
+function int_to_hex(i, pad=0)
+{
+	var s = "";
+	if i == 0 then s = "0";
+	
+	while i != 0 do
+	{
+		var c = i%16;
+		s = HEX_OUT_CHARS[c:c+1] + s;
+		i //= 16;
+	}
+	while s.size() < pad do s = "0"+s;
+	return s;
+}
+
+function color_from_hex(s)
+{
+	if s.size() < 1 then return null;
+	if s[0] == "#" then s = s[1:s.size()];
+	if s.size() == 3 then
+	{
+		var r = int_from_hex(s[0:1]) / 15;
+		var g = int_from_hex(s[1:2]) / 15;
+		var b = int_from_hex(s[2:3]) / 15;
+		return [r, g, b];
+	}
+	if s.size() == 6 then
+	{
+		var r = int_from_hex(s[0:2]) / 255;
+		var g = int_from_hex(s[2:4]) / 255;
+		var b = int_from_hex(s[4:6]) / 255;
+		return [r, g, b];
+	}
+	return null;
+}
+
+function color_to_hex(rgb)
+{
+	return "#"
+	     + int_to_hex(Integer(rgb[0]*255), 2)
+	     + int_to_hex(Integer(rgb[1]*255), 2)
+	     + int_to_hex(Integer(rgb[2]*255), 2);
+}
+
+
+namespace colors
+{
+	function identity(x) { return x; }
+	
+	function hsl2rgb(hsl)
+	{
+		var h = hsl[0], s = hsl[1], l = hsl[2];
+
+		var c = (1 - math.abs(2*l-1))*s;
+		var h1 = h*6;
+		var x = c * (1 - math.abs(h1 % 2.0 - 1));
+
+		var r1, g1, b1;
+		if      h1 < 1 then { r1 = c; g1 = x; b1 = 0; }
+		else if h1 < 2 then { r1 = x; g1 = c; b1 = 0; }
+		else if h1 < 3 then { r1 = 0; g1 = c; b1 = x; }
+		else if h1 < 4 then { r1 = 0; g1 = x; b1 = c; }
+		else if h1 < 5 then { r1 = x; g1 = 0; b1 = c; }
+		else                { r1 = c; g1 = 0; b1 = x; }
+
+		var m = l - c/2;
+		return [r1 + m, g1 + m, b1 + m];
+	}
+
+	function rgb2hsl(rgb)
+	{
+		var r = rgb[0], g = rgb[1], b = rgb[2];
+
+		var min = math.min(r, math.min(g, b));
+		var max = math.max(r, math.max(g, b));
+
+		var h, s, l;
+
+		# Calculate h
+		if max == min then
+			h = 0;	
+		else
+		{
+			var diff = max-min;
+			if      max == r then   h = 1/6 * (    (g-b)/diff);
+			else if max == g then   h = 1/6 * (2 + (b-r)/diff);
+			else #* max == b *#     h = 1/6 * (4 + (r-g)/diff);
+			if h < 0 then h += 1;
+		}
+
+		# Calculate s
+		if max == 0 or min == 1 then
+			s = 0;
+		else
+			s = (max-min) / (1-math.abs(max+min-1));
+
+		# Calculate l
+		l = (max+min) / 2;
+
+
+
+		return [h, s, l];
+	}
+	
+	
+	function hsv2rgb(hsv)
+	{
+		var h = hsv[0], s = hsv[1], v = hsv[2];
+
+		var c = v*s;
+		var h1 = h*6;
+		var x = c * (1 - math.abs(h1 % 2.0 - 1));
+
+		var r1, g1, b1;
+		if      h1 < 1 then { r1 = c; g1 = x; b1 = 0; }
+		else if h1 < 2 then { r1 = x; g1 = c; b1 = 0; }
+		else if h1 < 3 then { r1 = 0; g1 = c; b1 = x; }
+		else if h1 < 4 then { r1 = 0; g1 = x; b1 = c; }
+		else if h1 < 5 then { r1 = x; g1 = 0; b1 = c; }
+		else                { r1 = c; g1 = 0; b1 = x; }
+
+		var m = v - c;
+		return [r1 + m, g1 + m, b1 + m];
+	}
+	
+	
+	function rgb2hsv(rgb)
+	{
+		var r = rgb[0], g = rgb[1], b = rgb[2];
+
+		var min = math.min(r, math.min(g, b));
+		var max = math.max(r, math.max(g, b));
+
+		var h, s, v;
+
+		# Calculate h
+		if max == min then
+			h = 0;	
+		else
+		{
+			var diff = max-min;
+			if      max == r then   h = 1/6 * (    (g-b)/diff);
+			else if max == g then   h = 1/6 * (2 + (b-r)/diff);
+			else #* max == b *#     h = 1/6 * (4 + (r-g)/diff);
+			if h < 0 then h += 1;
+		}
+
+		# Calculate s
+		if max == 0 then
+			s = 0;
+		else
+			s = (max-min) / max;
+
+		# Calculate v
+		v = max;
+
+
+
+		return [h, s, v];
+	}
+	
+}
+
+
+
+
+function short_float(f)
+{
+	return math.floor(f*100)/100;
+}
+
+
+var color = [0, 0, 0];
+var color_in_mode = [0, 0, 0];
+var color_conv = [colors.identity, colors.identity]; # rgb2..., ...2rgb
+
+var MODES = ["RGB", "HSL", "HSV"];#0:10;#["RGB", "HSL", "XYZ", "ABC"];
+var MODE_CONV = {"RGB": [colors.identity, colors.identity],
+				 "HSL": [colors.rgb2hsl,  colors.hsl2rgb],
+				 "HSV": [colors.rgb2hsv,  colors.hsv2rgb]};
+
+var selectedMode = 0;
+var selectedButton = null;
+
+var commands = [];
+
+function addCommand(str, fn)
+{
+	commands.push([str, fn]);
+}
+
+namespace layout
+{
+
+	# x, y, w, h
+	var buttonsBorder;
+	var buttons;
+	
+	var modesBorder;
+	var modes;
+	
+	var slider;
+
+	var color;
+	
+	
+	
+	function update()
+	{
+		buttons = Array(commands.size());
+		modes = Array(MODES.size());
+		slider = Array(3);
+		
+		
+		var W = canvas.width();
+		var h = W//20;
+		var pad = W//32;
+		var spad = pad // 4;
+		var d = h+pad;
+		
+		
+		var x = W // 8;
+		var y = W // 8;
+		
+		var D = h + 2*d;
+		
+		var w = W - 2*x;
+		
+		
+		
+		buttonsBorder = [x, y, w, h+2*spad];
+		var ww = w - spad;
+		for var i in 0:buttons.size() do
+		{
+			var x0 = ww* i   //buttons.size();
+			var x1 = ww*(i+1)//buttons.size();
+			buttons[i] = [x+spad+x0, y+spad, x1-x0-spad, h];
+		}
+		
+		y += d+2*spad;
+		
+		modesBorder = [x, y, w, h];
+		for var i in 0:modes.size() do
+		{
+			var x0 = w* i   //modes.size();
+			var x1 = w*(i+1)//modes.size();
+			modes[i] = [x+x0, y, x1-x0, h];
+		}
+
+		y += d;
+		
+		color = [x, y, D, D];
+		var sw = W-D-pad-2*x;
+		for var i in 0:3 do
+		{
+			slider[i] = [x+D+pad, y + i*d, sw, h];
+		}
+	}
+}
+
+var dirty = 99;
+
+addCommand("Input Hex", function()
+{
+	var hex_str = prompt("Input Hex Color Code");
+	if hex_str != null then
+	{
+		var new_color = color_from_hex(hex_str);
+		if new_color != null then
+		{
+			color = new_color;
+			dirty = 99;
+			return;
+		}
+	}
+	print("Invalid Color");
+});
+addCommand("Set Random", function()
+{
+	color[0] = math.random();
+	color[1] = math.random();
+	color[2] = math.random();
+	color_in_mode = color_conv[0](color);
+	dirty = 99;
+});
+addCommand("Hex Code", function()
+{
+	print(color_to_hex(color));
+});
+addCommand("TScript Color", function()
+{
+	print(short_float(color[0]) + ", " + short_float(color[1]) + ", " + short_float(color[2]));
+});
+
+
+setEventHandler("canvas.resize", function(event)
+{
+	layout.update();
+	dirty = 99;
+});
+
+layout.update();
+
+
+function drawRect(r)
+{
+	canvas.fillRect(r[0], r[1], r[2], r[3]);
+}
+
+function clearRect(r)
+{
+	canvas.setFillColor(0.7, 0.7, 0.7);
+	drawRect(r);
+}
+
+function drawBorder(r)
+{
+	canvas.setLineWidth(1);
+	canvas.setFillColor(0.4, 0.4, 0.4);
+	canvas.fillRect(r[0]-2, r[1]-2, r[2]+2, 2);
+	canvas.fillRect(r[0]-2, r[1], 2, r[3]);
+	
+	canvas.setFillColor(0.9, 0.9, 0.9);
+	canvas.fillRect(r[0], r[1]+r[3], r[2]+2, 2);
+	canvas.fillRect(r[0]+r[2], r[1], 2, r[3]);
+}
+
+function drawBevel(r)
+{
+	canvas.setLineWidth(1);
+	canvas.setFillColor(0.9, 0.9, 0.9);
+	canvas.fillRect(r[0]-2, r[1]-2, r[2]+2, 2);
+	canvas.fillRect(r[0]-2, r[1], 2, r[3]);
+	
+	canvas.setFillColor(0.4, 0.4, 0.4);
+	canvas.fillRect(r[0], r[1]+r[3], r[2]+2, 2);
+	canvas.fillRect(r[0]+r[2], r[1], 2, r[3]);
+}
+
+function drawBorderInset(r)
+{
+	drawBorder([r[0]+2, r[1]+2, r[2]-4, r[3]-4]);
+}
+function drawBevelInset(r)
+{
+	drawBevel([r[0]+2, r[1]+2, r[2]-4, r[3]-4]);
+}
+
+
+function drawText(r, txt, ind = 0)
+{
+	var x = r[0] + r[2]//2 + ind;
+	var y = r[1] + r[3]//4 + ind;
+	
+	canvas.setFont("helvetica", r[3] // 2);
+	canvas.setTextAlign("center");
+	canvas.text(x, y, txt);
+}
+
+function drawSlider(r, channel)
+{
+	var c0 = deepcopy(color_in_mode); c0[channel] = 0;
+	var c1 = deepcopy(color_in_mode); c1[channel] = 1;
+	
+	gradient(r[0], r[1], r[2], r[3], c0, c1, color_conv[1]);
+	canvas.setFillColor(0, 0, 0);
+	var d = color_in_mode[channel]*(r[2]-4);
+	canvas.fillRect(r[0] + d, r[1], 4, r[3]);
+	canvas.setFillColor(1, 1, 1);
+	canvas.fillRect(r[0]+1 + d, r[1], 2, r[3]);
+}
+
+function draw()
+{
+	if dirty >= 3 then
+	{
+		canvas.setFillColor(0.7, 0.7, 0.7);
+		canvas.clear();
+		
+		
+		drawBevel(layout.buttonsBorder);
+		for var i in layout.buttons.keys() do
+		{
+			
+			var ii = 0; if i == selectedButton then ii = 1;
+			[drawBevelInset, drawBorderInset][ii](layout.buttons[i]);
+			canvas.setFillColor(0, 0, 0);
+			drawText(layout.buttons[i], commands[i][0], 0);
+		}
+		
+		
+		drawBorder(layout.modesBorder);
+		for var i in layout.modes.keys() do
+		{
+			var ii = 0; if i == selectedMode then ii = 1;
+			[drawBevelInset, drawBorderInset][ii](layout.modes[i]);
+			canvas.setFillColor(0, 0, 0);
+			drawText(layout.modes[i], MODES[i], 2*ii);
+		}
+	}
+	
+	if dirty >= 2 then
+	{
+		drawBorder(layout.color);
+		for var c in 0:3 do drawBorder(layout.slider[c]);
+	}
+	
+	if dirty >= 1 then
+	{
+		canvas.setFillColor(color[0], color[1], color[2]);
+		drawRect(layout.color);
+		for var c in 0:3 do drawSlider(layout.slider[c], c);
+	}
+	
+	dirty = 0;
+}
+
+
+draw();
+
+
+
+function containsPoint(r, px, py)
+{
+	return r[0] <= px and px < r[0]+r[2]
+	   and r[1] <= py and py < r[1]+r[3];
+}
+
+
+var selectedChannel = null;
+
+function slideColor(x)
+{
+	var r = layout.slider[selectedChannel];
+	var v = (x - r[0]-2) / (r[2]-4);
+	v = math.min(math.max(v, 0), 1);
+	color_in_mode[selectedChannel] = v;
+	color = color_conv[1](color_in_mode);
+	dirty = 1;
+}
+
+setEventHandler("canvas.mousedown", function(event)
+{
+	selectedChannel = null;
+	for var i in layout.buttons.keys() do
+	{
+		if containsPoint(layout.buttons[i], event.x, event.y) then
+		{
+			selectedButton = i;
+			dirty = 99; # TODO
+		}
+	}
+	
+	
+	for var i in layout.modes.keys() do
+	{
+		if containsPoint(layout.modes[i], event.x, event.y) then
+		{
+			selectedMode = i;
+			color_conv = MODE_CONV[MODES[i]];
+			color_in_mode = color_conv[0](color);
+			dirty = 99; # TODO
+		}
+	}
+	
+	for var i in 0:3 do
+	{
+		if containsPoint(layout.slider[i], event.x, event.y) then
+		{
+			selectedChannel = i;
+			slideColor(event.x);
+		}
+	}
+});
+
+
+function discardPress()
+{
+	if selectedButton != null then
+	{
+		selectedButton = null;
+		dirty = 99;
+	}
+	selectedChannel = null;
+}
+
+setEventHandler("canvas.mousemove", function(event)
+{
+	if selectedChannel != null then slideColor(event.x);
+});
+
+setEventHandler("canvas.mouseup", function(event)
+{
+	if selectedButton != null then
+	{
+		
+		if containsPoint(layout.buttons[selectedButton], event.x, event.y) then
+		{
+			commands[selectedButton][1]();
+		}
+	}
+	discardPress();
+});
+setEventHandler("canvas.mouseout", function(event)
+{
+	discardPress();
+});
+
+
+setEventHandler("timer", function(e)
+{
+	draw();
+});
+
+enterEventMode();
