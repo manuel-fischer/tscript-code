@@ -59,7 +59,7 @@ function int_to_hex(i, pad=0)
 function color_from_hex(s)
 {
 	if s.size() < 1 then return null;
-	if s[0] == "#" then s = s[1:s.size()];
+	if s[0:1] == "#" then s = s[1:s.size()];
 	if s.size() == 3 then
 	{
 		var r = int_from_hex(s[0:1]) / 15;
@@ -301,7 +301,22 @@ namespace layout
 	}
 }
 
-var dirty = 99;
+var DIRTY_ALL = 255;
+var DIRTY_COLOR = 1;
+var DIRTY_SLIDER_BORDER = 2;
+var DIRTY_MODE = 4;
+var DIRTY_BUTTONS = 8;
+var DIRTY_BACKGROUND = 16;
+
+var dirty = DIRTY_ALL;
+
+
+function setDirty(flags)
+{
+	dirty = dirty or flags;
+}
+
+
 
 addCommand("Input Hex", function()
 {
@@ -312,7 +327,8 @@ addCommand("Input Hex", function()
 		if new_color != null then
 		{
 			color = new_color;
-			dirty = 99;
+			color_in_mode = color_conv[0](color);
+			setDirty(DIRTY_COLOR);
 			return;
 		}
 	}
@@ -324,7 +340,7 @@ addCommand("Set Random", function()
 	color[1] = math.random();
 	color[2] = math.random();
 	color_in_mode = color_conv[0](color);
-	dirty = 99;
+	setDirty(DIRTY_COLOR);
 });
 addCommand("Hex Code", function()
 {
@@ -339,7 +355,7 @@ addCommand("TScript Color", function()
 setEventHandler("canvas.resize", function(event)
 {
 	layout.update();
-	dirty = 99;
+	setDirty(DIRTY_ALL);
 });
 
 layout.update();
@@ -415,11 +431,19 @@ function drawSlider(r, channel)
 
 function draw()
 {
-	if dirty >= 3 then
+	if (dirty and DIRTY_BACKGROUND) != 0 then
 	{
 		canvas.setFillColor(0.7, 0.7, 0.7);
 		canvas.clear();
-		
+	}
+	
+	if (dirty and DIRTY_BUTTONS) != 0 then
+	{		
+		if (dirty and DIRTY_BACKGROUND) == 0 then
+		{
+			canvas.setFillColor(0.7, 0.7, 0.7);
+			drawRect(layout.buttonsBorder);
+		}
 		
 		drawBevel(layout.buttonsBorder);
 		for var i in layout.buttons.keys() do
@@ -428,9 +452,17 @@ function draw()
 			var ii = 0; if i == selectedButton then ii = 1;
 			[drawBevelInset, drawBorderInset][ii](layout.buttons[i]);
 			canvas.setFillColor(0, 0, 0);
-			drawText(layout.buttons[i], commands[i][0], 0);
+			drawText(layout.buttons[i], commands[i][0], 2*ii);
 		}
-		
+	}
+	
+	if (dirty and DIRTY_MODE) != 0 then
+	{
+		if (dirty and DIRTY_BACKGROUND) == 0 then
+		{
+			canvas.setFillColor(0.7, 0.7, 0.7);
+			drawRect(layout.modesBorder);
+		}
 		
 		drawBorder(layout.modesBorder);
 		for var i in layout.modes.keys() do
@@ -442,13 +474,13 @@ function draw()
 		}
 	}
 	
-	if dirty >= 2 then
+	if (dirty and DIRTY_SLIDER_BORDER) != 0 then
 	{
 		drawBorder(layout.color);
 		for var c in 0:3 do drawBorder(layout.slider[c]);
 	}
 	
-	if dirty >= 1 then
+	if (dirty and DIRTY_COLOR) != 0 then
 	{
 		canvas.setFillColor(color[0], color[1], color[2]);
 		drawRect(layout.color);
@@ -479,7 +511,7 @@ function slideColor(x)
 	v = math.min(math.max(v, 0), 1);
 	color_in_mode[selectedChannel] = v;
 	color = color_conv[1](color_in_mode);
-	dirty = 1;
+	setDirty(DIRTY_COLOR);
 }
 
 setEventHandler("canvas.mousedown", function(event)
@@ -490,7 +522,7 @@ setEventHandler("canvas.mousedown", function(event)
 		if containsPoint(layout.buttons[i], event.x, event.y) then
 		{
 			selectedButton = i;
-			dirty = 99; # TODO
+			setDirty(DIRTY_BUTTONS);
 		}
 	}
 	
@@ -502,7 +534,7 @@ setEventHandler("canvas.mousedown", function(event)
 			selectedMode = i;
 			color_conv = MODE_CONV[MODES[i]];
 			color_in_mode = color_conv[0](color);
-			dirty = 99; # TODO
+			setDirty(DIRTY_MODE or DIRTY_COLOR);
 		}
 	}
 	
@@ -522,7 +554,7 @@ function discardPress()
 	if selectedButton != null then
 	{
 		selectedButton = null;
-		dirty = 99;
+		setDirty(DIRTY_BUTTONS);
 	}
 	selectedChannel = null;
 }
