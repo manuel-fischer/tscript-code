@@ -108,7 +108,7 @@ function renderField()
 					canvas.line(cx-dx, cy-dy, cx+dx, cy+dy);
 				}
 			}
-			else if neighbors[i] != 0 then
+			else if state[i] == REVEALED and neighbors[i] != 0 then
 			{
 				var a = neighbors[i]/4*math.pi() * 0.7;
 				var f = function(x) { return math.cos(x)*0.5+0.5; };
