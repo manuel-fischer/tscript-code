@@ -1,0 +1,267 @@
+from math use min, max;
+
+var size;
+var minecount;
+var mines;
+var neighbors;
+var state;
+var generated;
+var revealed;
+var end;
+
+var drawX;
+var drawY;
+var drawS; # number of rows/columns
+var drawC; # cellsize
+
+var HIDDEN = 0;
+var FLAGGED = 1;
+var REVEALED = 2;
+
+function updateLayout()
+{
+	var s = math.min(canvas.width(), canvas.height())-20;
+	drawC = s // size;
+	drawS = drawC *  size;
+
+	drawX = (canvas.width()  - drawS)//2;
+	drawY = (canvas.height() - drawS)//2;
+}
+
+function renderBackground()
+{
+	canvas.setFillColor(0.07, 0.07, 0.07);
+	canvas.clear();
+}
+
+function setFieldSize(nsize, nminecount)
+{
+	size = nsize;
+	minecount = nminecount;
+}
+
+function createEmptyField()
+{
+	
+	var area = size*size;
+	
+	mines = Array(area, false);
+	neighbors = Array(area, 0);
+	state = Array(area, HIDDEN);
+	
+	generated = false;
+	revealed = 0;
+	end = false;
+	
+	updateLayout();
+	renderBackground();
+}
+
+function renderField()
+{
+	var i = 0;
+	for var y in 0:size do
+	for var x in 0:size do
+	{
+		if state[i] == REVEALED then
+			canvas.setFillColor(0.10, 0.10, 0.10);
+		else
+			canvas.setFillColor(0.16, 0.16, 0.16);
+			
+		if end then
+		{
+			if state[i] == FLAGGED and not mines[i] then
+				canvas.setFillColor(1.0, 0.2, 0.1);
+			
+			if state[i] == REVEALED and mines[i] then
+				canvas.setFillColor(1.0, 0.2, 0.1);
+		}
+		
+		canvas.fillRect(drawX+drawC*x+1, drawY+drawC*y+1, drawC-2, drawC-2);
+		
+		var cx = drawX+drawC*(x+0.5);
+		var cy = drawY+drawC*(y+0.5);
+		
+		if state[i] == FLAGGED then
+		{
+			canvas.setFillColor(1, 1, 1);
+			canvas.fillRect(drawX+drawC*(x+0.4), drawY+drawC*(y+0.25), drawC*0.06, drawC*0.5);
+			canvas.fillArea([
+				[drawX+drawC*(x+0.41), drawY+drawC*(y+0.25)],
+				[drawX+drawC*(x+0.7 ), drawY+drawC*(y+0.35)],
+				[drawX+drawC*(x+0.41), drawY+drawC*(y+0.45)]
+			]);
+		}
+		else if state[i] == REVEALED or end then
+		{
+			if mines[i] then
+			{
+				canvas.setFillColor(1, 1, 1);
+				canvas.fillCircle(cx, cy, drawC*0.18);
+				
+				canvas.setLineColor(1, 1, 1);
+				canvas.setLineWidth(drawC*0.06);
+				for var j in 0:3 do
+				{
+					var dx = math.sin(j/3*math.pi())*drawC*0.3;
+					var dy = math.cos(j/3*math.pi())*drawC*0.3;
+					canvas.line(cx-dx, cy-dy, cx+dx, cy+dy);
+				}
+			}
+			else if neighbors[i] != 0 then
+			{
+				var a = neighbors[i]/4*math.pi() * 0.7;
+				var f = function(x) { return math.cos(x)*0.5+0.5; };
+				var r = f(a-math.pi()*2/3)^2*2;
+				var g = f(a)^2*2;
+				var b = f(a+math.pi()*2/3)^2*2;
+				
+				canvas.setFillColor(r, g, b);
+				canvas.setFont("monospace", drawC*0.6);
+				canvas.setTextAlign("center");
+				canvas.text(drawX+drawC*(x+0.5), drawY+drawC*(y+0.25), neighbors[i]);
+			}
+		}
+		
+		i += 1;
+	}
+}
+
+
+function generate(x, y)
+{
+	for 0:minecount	do
+	{
+		while true do
+		{
+			var mx = Integer(math.random()*size);
+			var my = Integer(math.random()*size);
+			
+			if (x-mx)^2 + (y-my)^2 < 2^2 then continue;
+			
+			var i = mx + my*size;
+			if mines[i] then continue;
+			
+			mines[i] = true;
+			
+			for var yy in max(0, my-1):min(my+2, size) do
+			for var xx in max(0, mx-1):min(mx+2, size) do
+			{
+				neighbors[xx+yy*size] += 1;	
+			}
+			
+			break;
+		}
+	}
+
+	generated = true;
+}
+
+function floodReveal(x, y)
+{
+	var queue = [];
+	
+	var push = function[queue](x, y)
+	{
+		var i = x+y*size;	
+		state[i] = REVEALED;
+		revealed += 1;
+		queue.push([x, y]);
+	};
+	push(x, y);
+	
+	while queue.size() != 0 do
+	{
+		var mx = queue[0][0];
+		var my = queue[0][1];
+		queue.remove(0);
+		
+		var i = mx+my*size;
+		
+		
+		if neighbors[i] == 0 then
+		{			
+			for var yy in max(0, my-1):min(my+2, size) do
+			for var xx in max(0, mx-1):min(mx+2, size) do
+			{
+				if state[xx+yy*size] != REVEALED then
+				{
+					push(xx, yy);
+				}
+			}
+		}
+	}
+}
+
+
+function reveal(x, y)
+{
+	var i = x+y*size;
+	if state[i] != HIDDEN then return;
+	
+	if not generated then generate(x, y);
+	
+	floodReveal(x, y);
+	if mines[i] then
+	{
+		end = true;
+		renderField();
+		print("Mine activated");
+		return;
+	}
+	else if revealed == size*size-minecount then
+	{
+		end = true;
+		renderField();
+		print("You won");
+		return;
+	}
+	
+	renderField();
+}
+
+function flag(x, y)
+{
+	var i = x+y*size;
+	if      state[i] == HIDDEN  then state[i] = FLAGGED;
+	else if state[i] == FLAGGED then state[i] = HIDDEN;
+	
+	renderField();
+}
+
+
+
+setEventHandler("canvas.mouseup", function(event)
+{
+	if end then
+	{
+		createEmptyField();
+		renderField();
+		return;
+	}
+	
+	var x = (event.x-drawX)//drawC;
+	var y = (event.y-drawY)//drawC;
+	if x < 0 or x >= size then return;
+	if y < 0 or y >= size then return;
+	
+	if event.button == "left"  then reveal(x, y);
+	if event.button == "right" then flag(x, y);
+});
+
+setEventHandler("canvas.resize", function(event)
+{
+	updateLayout();
+	renderBackground();
+	renderField();
+});
+
+
+
+setFieldSize(10, 15);
+#setFieldSize(20, 60);
+#setFieldSize(40, 240);
+createEmptyField();
+renderField();
+
+enterEventMode();
